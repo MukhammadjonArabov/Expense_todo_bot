@@ -1,0 +1,51 @@
+# ===== Python umumiy fayllar =====
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ===== Virtual environment =====
+venv/
+env/
+.venv/
+
+# ===== IDE va OS fayllari =====
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===== Log va cache =====
+*.log
+*.pot
+*.mo
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+__pycache__/
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.pid
+
+# ===== Environment fayllar =====
+.env
+.env.*
+
+# ===== PostgreSQL backup fayllar =====
+*.sql
+*.dump
+
+# ===== Aiogram bot fayllari =====
+*.session
+*.session-journal
+
+# ===== Build / dist =====
+build/
+dist/
+*.egg-info/
+.eggs/

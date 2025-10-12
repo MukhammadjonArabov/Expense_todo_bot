@@ -1,41 +1,29 @@
-from aiogram import Router, types, F
-from aiogram.filters import CommandStart
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
-from app.database import add_user
+from aiogram import Router, types
+from aiogram.filters import Command
+from app.database import async_session, User
+from sqlalchemy import select
 
 router = Router()
 
-@router.message(CommandStart())
+@router.message(Command("start"))
 async def start_handler(message: types.Message):
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Raqamni yuborish", request_contact=True)]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
-
-    await message.answer("Botga xush kelibsiz! Iltimos, raqamingizni yuboring 👇", reply_markup=keyboard)
-
-
-@router.message(F.contact)
-async def contact_handler(message: types.Message):
-    contact = message.contact
-    username = message.from_user.username
-    user_link = f"https://t.me/{username}" if username else None
-    phone = contact.phone_number
     tg_id = message.from_user.id
 
-    await add_user(tg_id, username, user_link, phone)
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.telegram_id == tg_id))
+        user = result.scalars().first()
 
-    main_keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="💰 Harajatlar"), KeyboardButton(text="📝 Vazifalar")]
-        ],
-        resize_keyboard=True
-    )
-
-    await message.answer(
-        "Siz muvaffaqiyatli ro‘yxatdan o‘tdingiz ✅\nEndi quyidagi bo‘limlardan birini tanlang 👇",
-        reply_markup=main_keyboard
-    )
+    if user:
+        await message.answer("Siz allaqachon ro'yxatdan o'tgansiz! 😊")
+    else:
+        keyboard = types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton(text="Telefon raqamni yuborish", request_contact=True)]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+        await message.answer(
+            "Iltimos, telefon raqamingizni yuboring:",
+            reply_markup=keyboard
+        )

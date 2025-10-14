@@ -68,4 +68,4 @@ async def show_main_menu(message: types.Message):
         ],
         resize_keyboard=True
     )
-    await message.answer("Asosiy menyu:", reply_markup=keyboard)
+    await message.answer("🏠 Asosiy menyu:", reply_markup=keyboard)

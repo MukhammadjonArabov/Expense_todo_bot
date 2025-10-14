@@ -14,16 +14,15 @@ class AddExpense(StatesGroup):
     reason = State()
     date = State()
 
+
 class DeleteExpense(StatesGroup):
     id = State()
 
 class CustomStats(StatesGroup):
     start_date = State()
 
-# Common timezone
 TZ = pytz.timezone("Asia/Tashkent")
 
-# Common keyboard
 def get_expense_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
@@ -37,17 +36,17 @@ def get_expense_keyboard():
         one_time_keyboard=False
     )
 
-# Common user retrieval
 async def get_user(session, telegram_id: int) -> User | None:
     result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     return result.scalars().first()
 
-# Expense menu entry
 @router.message(F.text.contains("Harajatlar"))
 async def expense_menu(message: types.Message):
-    await message.answer("💰 Harajatlar bo'limiga o'tdingiz. Quyidagilardan birini tanlang:", reply_markup=get_expense_keyboard())
+    await message.answer(
+        "💰 Harajatlar bo'limiga o'tdingiz. Quyidagilardan birini tanlang:",
+                         reply_markup=get_expense_keyboard()
+                         )
 
-# Add expense flow
 @router.message(F.text == "➕ Harajat qo'shish")
 async def add_expense_start(message: types.Message, state: FSMContext):
     await message.answer("Harajat summasini kiriting (musbat butun son):")
@@ -60,7 +59,8 @@ async def add_expense_amount(message: types.Message, state: FSMContext):
         if amount <= 0:
             raise ValueError
         await state.update_data(amount=amount)
-        await message.answer("Harajat sababini kiriting (ixtiyoriy, yoki '-' deb yozing):")
+        await message.answer("Harajat sababini kiriting"
+                             "Agar besabab bo'lsa - belgini kiriting!")
         await state.set_state(AddExpense.reason)
     except ValueError:
         await message.answer("Iltimos, to'g'ri musbat butun son kiriting!")
@@ -69,7 +69,8 @@ async def add_expense_amount(message: types.Message, state: FSMContext):
 async def add_expense_reason(message: types.Message, state: FSMContext):
     reason = message.text.strip() if message.text.strip() != "-" else None
     await state.update_data(reason=reason)
-    await message.answer("Sana va vaqtni kiriting (YYYY-MM-DD HH:MM) yoki '-' deb yozing (avtomatik hozirgi vaqt):")
+    await message.answer("Sana va vaqtni kiriting 2025-10-14 14:30 yoki"
+                         "hozirgi vaqtni belgilash uchun - belgini kiritng!")
     await state.set_state(AddExpense.date)
 
 @router.message(AddExpense.date)
@@ -83,8 +84,12 @@ async def add_expense_date(message: types.Message, state: FSMContext):
         try:
             created_at = TZ.localize(datetime.strptime(message.text.strip(), "%Y-%m-%d %H:%M"))
         except ValueError:
-            await message.answer("Noto'g'ri format! YYYY-MM-DD HH:MM shaklida kiriting yoki '-':")
+            await message.answer("Noto'g'ri format! 2025-10-14 14:30 shaklida kiriting yoki '-':")
             return
+
+    if created_at > datetime.now(TZ):
+        await message.answer("🚫 Kelajakdagi vaqtni kiritib bo‘lmaydi.")
+        return
 
     async with async_session() as session:
         user = await get_user(session, telegram_id)
@@ -96,12 +101,11 @@ async def add_expense_date(message: types.Message, state: FSMContext):
         expense = Expense(user_id=user.id, amount=data["amount"], reason=data["reason"], created_at=created_at)
         session.add(expense)
         await session.commit()
-        await session.refresh(expense)  # Get the ID
+        await session.refresh(expense)
 
     await message.answer(f"✅ Harajat saqlandi! ID: {expense.id}", reply_markup=get_expense_keyboard())
     await state.clear()
 
-# List expenses
 @router.message(F.text == "📋 Harajatlar ro'yxati")
 async def list_expenses(message: types.Message):
     telegram_id = message.from_user.id

@@ -1,7 +1,8 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExpense
-from app.addition.inline import get_expense_keyboard
+from app.addition.inline import get_expense_keyboard, get_expenses_action_keyboard, get_years_keyboard, \
+    get_months_keyboard
 from app.database import async_session, Expense, User
 from sqlalchemy import select, delete, func
 from datetime import datetime, timedelta
@@ -102,6 +103,7 @@ async def add_expense_date(message: types.Message, state: FSMContext):
 
     await message.answer(f"✅ Harajat saqlandi! ID: {expense.id}", reply_markup=get_expense_keyboard())
     await state.clear()
+############################################################################################################
 
 @router.message(F.text == "📋 Harajatlar ro'yxati")
 async def list_expenses(message: types.Message):
@@ -114,17 +116,16 @@ async def list_expenses(message: types.Message):
         await show_expenses_page(message, session, user.id, page=1)
 
 @router.callback_query(F.data.startswith("expenses_page:"))
-async def paginate_expenses(callback: types.CallbackQuery):
+async def change_expense_page(callback: types.CallbackQuery):
     page = int(callback.data.split(":")[1])
     telegram_id = callback.from_user.id
-
     async with async_session() as session:
         user = await get_user(session, telegram_id)
         if not user:
-            await callback.answer("Avval ro'yxatdan o'ting! /start", show_alert=True)
+            await callback.answer("Avval ro'yxatdan o'ting!", show_alert=True)
             return
-
-        await show_expenses_page(callback, session, user.id, page)
+        await show_expenses_page(callback.message, session, user.id, page=page, edit=True)
+    await callback.answer()
 
 @router.message(F.text == "🗑 O'chirish")
 async def ask_delete_id(message: types.Message, state: FSMContext):
@@ -166,3 +167,145 @@ async def delete_expense_by_id(message: types.Message, state: FSMContext):
 
         await message.answer(f"✅ Harajat o‘chirildi (ID: {expense_id}).")
         await state.clear()
+##################################################################################
+
+
+# 📋 Default — o'tgan va hozirgi oy
+@router.message(F.text == "📋 Harajatlar ro'yxati")
+async def show_default_expenses(message: types.Message):
+    telegram_id = message.from_user.id
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        if not user:
+            await message.answer("Avval ro'yxatdan o'ting! /start")
+            return
+
+        now = datetime.now(TZ)
+        current_year, current_month = now.year, now.month
+
+        prev_month_date = now.replace(day=1) - timedelta(days=1)
+        prev_year, prev_month = prev_month_date.year, prev_month_date.month
+
+        # Hozirgi oy harajatlarini ko‘rsatish
+        await show_expenses_page(
+            target=message,
+            session=session,
+            user_id=user.id,
+            page=1,
+            year=current_year,
+            month=current_month,
+        )
+
+        # ⚠️ E’tibor: Bu joyda keyboard chiqishi uchun reply_markup shunday chaqiriladi
+        await message.answer(
+            "👇 Quyidagi harakatlardan birini tanlang:",
+            reply_markup=get_expenses_action_keyboard()
+        )
+
+
+# 📆 “Yil va oy bo‘yicha ko‘rish” tugmasi
+@router.message(F.text == "📆 Yil va oy bo‘yicha ko‘rish")
+async def choose_expense_year(message: types.Message):
+    telegram_id = message.from_user.id
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        if not user:
+            await message.answer("Avval ro'yxatdan o'ting! /start")
+            return
+
+        # Foydalanuvchining mavjud yillarini olish
+        result = await session.execute(
+            select(func.extract('year', Expense.created_at))
+            .where(Expense.user_id == user.id)
+            .distinct()
+            .order_by(func.extract('year', Expense.created_at).desc())
+        )
+        years = [int(row[0]) for row in result.all()]
+
+        if not years:
+            await message.answer("Hech qanday harajat topilmadi.")
+            return
+
+        # Agar faqat bitta yil (joriy yil) bo‘lsa → to‘g‘ridan-to‘g‘ri oy tanlash
+        if len(years) == 1 and years[0] == datetime.now(TZ).year:
+            await show_months_for_year(message, user.id, years[0])
+            return
+
+        # Aks holda yil tanlash
+        await message.answer("🗓 Yilni tanlang:", reply_markup=get_years_keyboard(years, user.id))
+
+
+# 🔘 Yil bosilganda — oylik tanlash
+@router.callback_query(F.data.startswith("choose_year:"))
+async def choose_month_by_year(callback: types.CallbackQuery):
+    parts = callback.data.split(":")
+    user_id = int(parts[1])
+    year = int(parts[2])
+    await show_months_for_year(callback.message, user_id, year, edit=True)
+
+
+async def show_months_for_year(target, user_id: int, year: int, edit=False):
+    async with async_session() as session:
+        result = await session.execute(
+            select(func.extract('month', Expense.created_at))
+            .where(
+                (Expense.user_id == user_id)
+                & (func.extract('year', Expense.created_at) == year)
+            )
+            .distinct()
+            .order_by(func.extract('month', Expense.created_at).asc())
+        )
+        months = [int(row[0]) for row in result.all()]
+
+    if not months:
+        if isinstance(target, types.Message):
+            await target.answer("Bu yil uchun hech qanday harajat topilmadi.")
+        else:
+            await target.answer("Bu yil uchun hech qanday harajat topilmadi.", show_alert=True)
+        return
+
+    text = f"📅 {year}-yil uchun oyni tanlang:"
+    markup = get_months_keyboard(year, months)
+
+    if edit:
+        await target.edit_text(text, parse_mode="HTML", reply_markup=markup)
+    else:
+        await target.answer(text, parse_mode="HTML", reply_markup=markup)
+
+
+# 🔙 Orqaga — yil ro‘yxatiga qaytish
+@router.callback_query(F.data == "back_to_years")
+async def back_to_years(callback: types.CallbackQuery):
+    telegram_id = callback.from_user.id
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        result = await session.execute(
+            select(func.extract('year', Expense.created_at))
+            .where(Expense.user_id == user.id)
+            .distinct()
+            .order_by(func.extract('year', Expense.created_at).desc())
+        )
+        years = [int(row[0]) for row in result.all()]
+    markup = get_years_keyboard(years, user.id)
+    await callback.message.edit_text("🗓 Yilni tanlang:", reply_markup=markup)
+
+
+# 📆 OY bosilganda — harajatlarni chiqarish
+@router.callback_query(F.data.startswith("choose_month:"))
+async def show_expenses_by_month(callback: types.CallbackQuery):
+    parts = callback.data.split(":")
+    year = int(parts[1])
+    month = int(parts[2])
+    telegram_id = callback.from_user.id
+
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        await show_expenses_page(
+            target=callback.message,
+            session=session,
+            user_id=user.id,
+            page=1,
+            year=year,
+            month=month,
+            edit=True
+        )

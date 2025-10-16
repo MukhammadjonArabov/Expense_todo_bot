@@ -2,12 +2,10 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExpense, show_expense_statistics
 from app.addition.inline import get_expense_keyboard, get_expenses_action_keyboard, get_years_keyboard, \
-    get_months_keyboard
+    get_months_keyboard, show_main_menu
 from app.database import async_session, Expense, User
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
-
-from app.handlers.start import show_main_menu
 
 router = Router()
 

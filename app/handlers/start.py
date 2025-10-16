@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 
-from app.addition.functions import show_main_menu
+from app.addition.inline import show_main_menu
 from app.database import async_session, User
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError

@@ -4,24 +4,11 @@ import io
 from aiogram.types import BufferedInputFile
 import matplotlib.pyplot as plt
 from datetime import datetime
-from aiogram.types import FSInputFile
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from app.addition.inline import get_pagination_keyboard, get_expenses_action_keyboard
 from app.database import Expense
 from sqlalchemy import select, extract
 
 ITEMS_PER_PAGE = 10
-
-
-def get_pagination_keyboard(page: int, has_next: bool, year=None, month=None):
-    builder = InlineKeyboardBuilder()
-    if page > 1:
-        builder.button(text="⬅️ Orqaga", callback_data=f"expenses_page:{page - 1}:{year}:{month}")
-    if has_next:
-        builder.button(text="➡️ Keyingisi", callback_data=f"expenses_page:{page + 1}:{year}:{month}")
-    builder.adjust(2)
-    return builder.as_markup()
 
 
 async def show_expenses_page(target, session, user_id: int, page: int = 1, year=None, month=None, edit=False):
@@ -85,18 +72,6 @@ class AddExpense(StatesGroup):
 
 class CustomStats(StatesGroup):
     start_date = State()
-
-TZ = pytz.timezone("Asia/Tashkent")
-
-
-from aiogram import types
-from sqlalchemy import select, extract, func
-from datetime import datetime
-import pytz
-import io
-import matplotlib.pyplot as plt
-from aiogram.types import BufferedInputFile
-from app.database import Expense
 
 TZ = pytz.timezone("Asia/Tashkent")
 

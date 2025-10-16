@@ -1,5 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
+
+from app.addition.functions import show_main_menu
 from app.database import async_session, User
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -61,11 +63,4 @@ async def contact_handler(message: types.Message):
     await show_main_menu(message)
 
 
-async def show_main_menu(message: types.Message):
-    keyboard = types.ReplyKeyboardMarkup(
-        keyboard=[
-            [types.KeyboardButton(text="💰 Harajatlar"), types.KeyboardButton(text="📝 Vazifalar")]
-        ],
-        resize_keyboard=True
-    )
-    await message.answer("🏠 Asosiy menyu:", reply_markup=keyboard)
+

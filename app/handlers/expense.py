@@ -1,12 +1,11 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExpense
+from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExpense, show_expense_statistics
 from app.addition.inline import get_expense_keyboard, get_expenses_action_keyboard, get_years_keyboard, \
     get_months_keyboard
 from app.database import async_session, Expense, User
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, func
 from datetime import datetime, timedelta
-from aiogram.fsm.state import State, StatesGroup
 
 from app.handlers.start import show_main_menu
 
@@ -33,7 +32,13 @@ async def expense_menu(message: types.Message):
         await message.answer("📝 Yangi harajat qo‘shish uchun summa va sababni kiriting...")
 
     elif text == "📊 Harajatlar statistika":
-        await message.answer("📊 Statistikani hozircha tayyorlayapmiz...")
+        telegram_id = message.from_user.id
+        async with async_session() as session:
+            user = await get_user(session, telegram_id)
+            if not user:
+                await message.answer("Avval ro'yxatdan o'ting! /start")
+                return
+            await show_expense_statistics(message, session, user.id)
 
     elif text == "⬅️ Orqaga":
         await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=show_main_menu())
@@ -57,7 +62,7 @@ async def add_expense_amount(message: types.Message, state: FSMContext):
         if amount <= 0:
             raise ValueError
         await state.update_data(amount=amount)
-        await message.answer("Harajat sababini kiriting"
+        await message.answer("Harajat sababini kiriting\n"
                              "Agar besabab bo'lsa - belgini kiriting!")
         await state.set_state(AddExpense.reason)
     except ValueError:
@@ -67,8 +72,8 @@ async def add_expense_amount(message: types.Message, state: FSMContext):
 async def add_expense_reason(message: types.Message, state: FSMContext):
     reason = message.text.strip() if message.text.strip() != "-" else None
     await state.update_data(reason=reason)
-    await message.answer("Sana va vaqtni kiriting 2025-10-14 14:30 yoki"
-                         "\nhozirgi vaqtni belgilash uchun - belgini kiritng!")
+    await message.answer("Sana va vaqtni kiriting masalan: 2025-10-14 14:30"
+                         "\nhozirgi vaqtni kiritish uchun - belgini kiritng!")
     await state.set_state(AddExpense.date)
 
 @router.message(AddExpense.date)
@@ -309,3 +314,12 @@ async def show_expenses_by_month(callback: types.CallbackQuery):
             month=month,
             edit=True
         )
+
+##################################################################################################################
+
+@router.message(F.text == "📊 Harajatlar statistika")
+async def handle_statistics(message, state):
+    user_id = message.from_user.id
+    async with async_session() as session:
+        await show_expense_statistics(message, session, user_id)
+

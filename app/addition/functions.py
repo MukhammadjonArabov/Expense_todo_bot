@@ -1,14 +1,15 @@
 from aiogram.fsm.state import State, StatesGroup
 import pytz
-from datetime import datetime, timedelta
-
+import io
+from aiogram.types import BufferedInputFile
+import matplotlib.pyplot as plt
+from datetime import datetime
+from aiogram.types import FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.addition.inline import get_pagination_keyboard, get_expenses_action_keyboard
 from app.database import Expense
 from sqlalchemy import select, extract
-from aiogram import types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 ITEMS_PER_PAGE = 10
 
@@ -86,3 +87,64 @@ class CustomStats(StatesGroup):
     start_date = State()
 
 TZ = pytz.timezone("Asia/Tashkent")
+
+
+from aiogram import types
+from sqlalchemy import select, extract, func
+from datetime import datetime
+import pytz
+import io
+import matplotlib.pyplot as plt
+from aiogram.types import BufferedInputFile
+from app.database import Expense
+
+TZ = pytz.timezone("Asia/Tashkent")
+
+
+async def show_expense_statistics(message, session, user_id: int):
+    now = datetime.now(TZ)
+    year, month = now.year, now.month
+
+    # 🔹 Hozirgi oy bo‘yicha harajatlar olish
+    query = select(Expense.amount, Expense.created_at).where(
+        (Expense.user_id == user_id)
+        & (extract("year", Expense.created_at) == year)
+        & (extract("month", Expense.created_at) == month)
+    )
+    result = await session.execute(query)
+    expenses = result.all()
+
+    if not expenses:
+        await message.answer("📊 Hozircha bu oyda harajatlar yo‘q.")
+        return
+
+    # 🔹 Kunlik yig‘indi hisoblash
+    daily_expenses = {}
+    for amount, date in expenses:
+        local_date = date.astimezone(TZ).date()
+        daily_expenses[local_date.day] = daily_expenses.get(local_date.day, 0) + amount
+
+    # 🔹 Oydagi kunlar soniga qarab massiv yasash
+    import calendar
+    _, days_in_month = calendar.monthrange(year, month)
+
+    x_days = list(range(1, days_in_month + 1))
+    y_amounts = [daily_expenses.get(day, 0) for day in x_days]
+
+    # 🔹 Grafik yasash
+    plt.style.use('seaborn-v0_8-darkgrid')
+    plt.figure(figsize=(8, 4))
+    plt.plot(x_days, y_amounts, marker='o', linewidth=2, color='royalblue')
+    plt.title(f"{now.strftime('%B %Y')} oyi harajatlari", fontsize=12)
+    plt.xlabel("Kun", fontsize=10)
+    plt.ylabel("Harajat (so‘m)", fontsize=10)
+    plt.tight_layout()
+
+    # 🔹 Grafikni yuborish
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    buf.seek(0)
+    plt.close()
+
+    image = BufferedInputFile(buf.getvalue(), filename="monthly_stats.png")
+    await message.answer_photo(photo=image, caption="📊 Joriy oy bo‘yicha harajatlar grafigi.")

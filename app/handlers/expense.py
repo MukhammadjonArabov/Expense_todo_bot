@@ -1,17 +1,18 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExpense, show_expense_statistics
+from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExpense, get_user, \
+    generate_year_chart, generate_month_chart, get_years_keyboard_for_months, get_years_keyboard_statistic, \
+    get_months_keyboard_statistic, show_months_for_statistic
 from app.addition.inline import get_expense_keyboard, get_expenses_action_keyboard, get_years_keyboard, \
-    get_months_keyboard, show_main_menu
+    show_main_menu, get_statistics_action_keyboard, get_months_keyboard
 from app.database import async_session, Expense, User
-from sqlalchemy import select, func
+from sqlalchemy import select, func, extract
 from datetime import datetime, timedelta
+import calendar
 
 router = Router()
 
-async def get_user(session, telegram_id: int) -> User | None:
-    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
-    return result.scalars().first()
+
 
 @router.message(F.text.contains("Harajatlar"))
 async def expense_menu(message: types.Message):
@@ -30,13 +31,7 @@ async def expense_menu(message: types.Message):
         await message.answer("📝 Yangi harajat qo‘shish uchun summa va sababni kiriting...")
 
     elif text == "📊 Harajatlar statistika":
-        telegram_id = message.from_user.id
-        async with async_session() as session:
-            user = await get_user(session, telegram_id)
-            if not user:
-                await message.answer("Avval ro'yxatdan o'ting! /start")
-                return
-            await show_expense_statistics(message, session, user.id)
+        await show_statistics_menu(message)
 
     elif text == "⬅️ Orqaga":
         await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=show_main_menu())
@@ -46,7 +41,6 @@ async def expense_menu(message: types.Message):
             "💰 Harajatlar bo'limiga o'tdingiz. Quyidagilardan birini tanlang:",
             reply_markup=get_expense_keyboard()
         )
-
 
 @router.message(F.text == "➕ Harajat qo'shish")
 async def add_expense_start(message: types.Message, state: FSMContext):
@@ -106,17 +100,8 @@ async def add_expense_date(message: types.Message, state: FSMContext):
 
     await message.answer(f"✅ Harajat saqlandi! ID: {expense.id}", reply_markup=get_expense_keyboard())
     await state.clear()
-############################################################################################################
 
-@router.message(F.text == "📋 Harajatlar ro'yxati")
-async def list_expenses(message: types.Message):
-    telegram_id = message.from_user.id
-    async with async_session() as session:
-        user = await get_user(session, telegram_id)
-        if not user:
-            await message.answer("Avval ro'yxatdan o'ting! /start")
-            return
-        await show_expenses_page(message, session, user.id, page=1)
+############################################# Harajatlar ro'yxati ######################################################
 
 @router.callback_query(F.data.startswith("expenses_page:"))
 async def change_expense_page(callback: types.CallbackQuery):
@@ -170,10 +155,10 @@ async def delete_expense_by_id(message: types.Message, state: FSMContext):
 
         await message.answer(f"✅ Harajat o‘chirildi (ID: {expense_id}).")
         await state.clear()
-##################################################################################
+############################################## Harajatlar ro'yxati #####################################################
 
 
-# 📋 Default — o'tgan va hozirgi oy
+# Default — o'tgan va hozirgi oy
 @router.message(F.text == "📋 Harajatlar ro'yxati")
 async def show_default_expenses(message: types.Message):
     telegram_id = message.from_user.id
@@ -185,9 +170,6 @@ async def show_default_expenses(message: types.Message):
 
         now = datetime.now(TZ)
         current_year, current_month = now.year, now.month
-
-        prev_month_date = now.replace(day=1) - timedelta(days=1)
-        prev_year, prev_month = prev_month_date.year, prev_month_date.month
 
         # Hozirgi oy harajatlarini ko‘rsatish
         await show_expenses_page(
@@ -218,12 +200,16 @@ async def choose_expense_year(message: types.Message):
 
         # Foydalanuvchining mavjud yillarini olish
         result = await session.execute(
-            select(func.extract('year', Expense.created_at))
-            .where(Expense.user_id == user.id)
-            .distinct()
-            .order_by(func.extract('year', Expense.created_at).desc())
+            select(
+                func.extract('year', Expense.created_at)
+            ).where(
+                Expense.user_id == user.id
+            ).distinct().order_by(
+                func.extract('year', Expense.created_at).desc()
+            )
+
         )
-        years = [int(row[0]) for row in result.all()]
+        years = [int(row[0]) for row in result.all()] # barcha yillarni listga yi'g'ish
 
         if not years:
             await message.answer("Hech qanday harajat topilmadi.")
@@ -238,7 +224,7 @@ async def choose_expense_year(message: types.Message):
         await message.answer("🗓 Yilni tanlang:", reply_markup=get_years_keyboard(years, user.id))
 
 
-# 🔘 Yil bosilganda — oylik tanlash
+# Yil bosilganda — oylik tanlash
 @router.callback_query(F.data.startswith("choose_year:"))
 async def choose_month_by_year(callback: types.CallbackQuery):
     parts = callback.data.split(":")
@@ -276,7 +262,7 @@ async def show_months_for_year(target, user_id: int, year: int, edit=False):
         await target.answer(text, parse_mode="HTML", reply_markup=markup)
 
 
-# 🔙 Orqaga — yil ro‘yxatiga qaytish
+#Orqaga — yil ro‘yxatiga qaytish
 @router.callback_query(F.data == "back_to_years")
 async def back_to_years(callback: types.CallbackQuery):
     telegram_id = callback.from_user.id
@@ -293,7 +279,7 @@ async def back_to_years(callback: types.CallbackQuery):
     await callback.message.edit_text("🗓 Yilni tanlang:", reply_markup=markup)
 
 
-# 📆 OY bosilganda — harajatlarni chiqarish
+#OY bosilganda — harajatlarni chiqarish
 @router.callback_query(F.data.startswith("choose_month:"))
 async def show_expenses_by_month(callback: types.CallbackQuery):
     parts = callback.data.split(":")
@@ -313,11 +299,231 @@ async def show_expenses_by_month(callback: types.CallbackQuery):
             edit=True
         )
 
-##################################################################################################################
+####################################################### 📊 Harajatlar statistika ###########################################################
 
+# =====================
+# 📊 Statistikalar menyusi
+# =====================
 @router.message(F.text == "📊 Harajatlar statistika")
-async def handle_statistics(message, state):
-    user_id = message.from_user.id
+async def show_statistics_menu(message: types.Message):
+    telegram_id = message.from_user.id
+    now = datetime.now(TZ)
+    year = now.year
+
     async with async_session() as session:
-        await show_expense_statistics(message, session, user_id)
+        user = await get_user(session, telegram_id)
+        if not user:
+            await message.answer("Avval ro‘yxatdan o‘ting! /start")
+            return
+
+        # Shu yil bo‘yicha umumiy ma’lumot
+        result = await session.execute(
+            select(
+                func.extract('month', Expense.created_at).label('month'),
+                func.sum(Expense.amount).label('total')
+            )
+            .where(
+                (Expense.user_id == user.id) &
+                (func.extract('year', Expense.created_at) == year)
+            )
+            .group_by('month')
+            .order_by('month')
+        )
+        data = result.all()
+
+        if data:
+            chart = await generate_year_chart(year, data)
+
+            total = sum(float(row[1]) for row in data)
+            max_month, max_val = max(data, key=lambda x: x[1])
+            min_month, min_val = min(data, key=lambda x: x[1])
+
+            month_names = [
+                "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+                "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"
+            ]
+
+            caption = (
+                f"📊 {year}-yil statistikasi\n"
+                f"💰 Umumiy: {int(total):,} so‘m\n"
+                f"📈 Eng ko‘p: {month_names[int(max_month)-1]} ({int(max_val):,} so‘m)\n"
+                f"📉 Eng kam: {month_names[int(min_month)-1]} ({int(min_val):,} so‘m)"
+            )
+
+            await message.answer_photo(photo=chart, caption=caption)
+
+        await message.answer(
+            "📊 Qaysi turdagi statistika kerak?",
+            reply_markup=get_statistics_action_keyboard()
+        )
+
+
+# =====================
+# 📅 Yillik statistika
+# =====================
+@router.message(F.text == "📅 Yillik statistika")
+async def show_years_list(message: types.Message):
+    telegram_id = message.from_user.id
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        if not user:
+            await message.answer("Avval ro‘yxatdan o‘ting! /start")
+            return
+
+        reply_markup = await get_years_keyboard_statistic(session, user.id)
+        await message.answer("🗓 Yilni tanlang:", reply_markup=reply_markup)
+
+
+@router.callback_query(F.data.startswith("stat_year:"))
+async def show_selected_year_statistics(callback: types.CallbackQuery):
+    _, user_id, year = callback.data.split(":")
+    user_id, year = int(user_id), int(year)
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(
+                func.extract('month', Expense.created_at).label('month'),
+                func.sum(Expense.amount).label('total')
+            )
+            .where(
+                (Expense.user_id == user_id) &
+                (func.extract('year', Expense.created_at) == year)
+            )
+            .group_by('month')
+            .order_by('month')
+        )
+        data = result.all()
+
+        if not data:
+            await callback.message.answer(f"📭 {year}-yilda harajat topilmadi.")
+            return
+
+        chart = await generate_year_chart(year, data)
+
+        total = sum(float(row[1]) for row in data)
+        max_month, max_val = max(data, key=lambda x: x[1])
+        min_month, min_val = min(data, key=lambda x: x[1])
+
+        month_names = [
+            "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+            "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"
+        ]
+
+        caption = (
+            f"📊 {year}-yil statistikasi\n"
+            f"💰 Umumiy: {int(total):,} so‘m\n"
+            f"📈 Eng ko‘p: {month_names[int(max_month)-1]} ({int(max_val):,} so‘m)\n"
+            f"📉 Eng kam: {month_names[int(min_month)-1]} ({int(min_val):,} so‘m)"
+        )
+
+        await callback.message.answer_photo(photo=chart, caption=caption)
+        await callback.answer()
+
+
+# =====================
+# 📆 Oylik statistika
+# =====================
+@router.message(F.text == "📆 Oylik statistika")
+async def show_years_for_monthly_stats(message: types.Message):
+    telegram_id = message.from_user.id
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        reply_markup = await get_years_keyboard_for_months(session, user.id)
+        await message.answer("🗓 Qaysi yil uchun statistikani ko‘rmoqchisiz?", reply_markup=reply_markup)
+
+
+@router.callback_query(F.data.startswith("choose_year_statistic:"))
+async def show_months_for_selected_year(callback: types.CallbackQuery):
+    _, user_id, year = callback.data.split(":")
+    user_id, year = int(user_id), int(year)
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(func.extract('month', Expense.created_at))
+            .where(
+                (Expense.user_id == user_id) &
+                (func.extract('year', Expense.created_at) == year)
+            )
+            .distinct()
+            .order_by(func.extract('month', Expense.created_at))
+        )
+        months = [int(row[0]) for row in result.all()]
+
+        if not months:
+            await callback.message.edit_text(f"{year}-yilda hech qanday harajat topilmadi.")
+            await callback.answer()
+            return
+
+        await callback.message.edit_text(
+            f"📆 {year}-yil uchun oy tanlang:",
+            reply_markup=get_months_keyboard_statistic(year, months)
+        )
+        await callback.answer()
+
+@router.callback_query(F.data.startswith("choose_month_statistic:"))
+async def show_month_chart(callback: types.CallbackQuery):
+    _, year, month = callback.data.split(":")
+    year, month = int(year), int(month)
+    telegram_id = callback.from_user.id
+
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+
+        result = await session.execute(
+            select(
+                func.extract('day', Expense.created_at).label('day'),
+                func.sum(Expense.amount).label('total')
+            )
+            .where(
+                (Expense.user_id == user.id) &
+                (func.extract('year', Expense.created_at) == year) &
+                (func.extract('month', Expense.created_at) == month)
+            )
+            .group_by('day')
+            .order_by('day')
+        )
+        data = result.all()
+
+        if not data:
+            await callback.message.answer("Bu oyda hech qanday harajat topilmadi.")
+            await callback.answer()
+            return
+
+        chart = await generate_month_chart(year, month, data)
+
+        total = sum(float(row[1]) for row in data)
+        max_day, max_val = max(data, key=lambda x: x[1])
+        min_day, min_val = min(data, key=lambda x: x[1])
+
+        caption = (
+            f"📊 {year}-{month}-oy statistikasi\n"
+            f"💰 Umumiy: {int(total):,} so‘m\n"
+            f"📈 Eng ko‘p: {int(max_day)}-kun ({int(max_val):,} so‘m)\n"
+            f"📉 Eng kam: {int(min_day)}-kun ({int(min_val):,} so‘m)"
+        )
+
+        await callback.message.answer_photo(photo=chart, caption=caption)
+        await callback.answer()
+
+
+@router.callback_query(F.data.startswith("choose_year_statistic:"))
+async def choose_month_for_statistic(callback: types.CallbackQuery):
+    _, user_id, year = callback.data.split(":")
+    user_id, year = int(user_id), int(year)
+    await show_months_for_statistic(callback.message, user_id, year, edit=True)
+
+@router.callback_query(F.data == "back_to_years_statistic")
+async def back_to_years_statistic(callback: types.CallbackQuery):
+    telegram_id = callback.from_user.id
+    async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        result = await session.execute(
+            select(func.extract('year', Expense.created_at))
+            .where(Expense.user_id == user.id)
+            .distinct()
+            .order_by(func.extract('year', Expense.created_at).desc())
+        )
+        years = [int(row[0]) for row in result.all()]
+    markup = get_years_keyboard_statistic(years, user.id)
+    await callback.message.edit_text("📊 Statistika uchun yilni tanlang:", reply_markup=markup)
 

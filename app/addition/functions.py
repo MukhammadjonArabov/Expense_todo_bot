@@ -1,14 +1,24 @@
+import io
+import matplotlib.pyplot as plt
+from app.database import async_session
 from aiogram.fsm.state import State, StatesGroup
 import pytz
 import io
-from aiogram.types import BufferedInputFile
+from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, \
+    KeyboardButton, InputFile
 import matplotlib.pyplot as plt
 from datetime import datetime
 from app.addition.inline import get_pagination_keyboard, get_expenses_action_keyboard
 from app.database import Expense
-from sqlalchemy import select, extract
+from sqlalchemy import select, extract, func
+import calendar
+from app.database import User
 
 ITEMS_PER_PAGE = 10
+
+async def get_user(session, telegram_id: int) -> User | None:
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+    return result.scalars().first()
 
 
 async def show_expenses_page(target, session, user_id: int, page: int = 1, year=None, month=None, edit=False):
@@ -76,50 +86,132 @@ class CustomStats(StatesGroup):
 TZ = pytz.timezone("Asia/Tashkent")
 
 
-async def show_expense_statistics(message, session, user_id: int):
-    now = datetime.now(TZ)
-    year, month = now.year, now.month
+def get_months_keyboard_statistic(year: int, months: list[int]):
+    month_names = [
+        "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+        "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"
+    ]
 
-    # 🔹 Hozirgi oy bo‘yicha harajatlar olish
-    query = select(Expense.amount, Expense.created_at).where(
-        (Expense.user_id == user_id)
-        & (extract("year", Expense.created_at) == year)
-        & (extract("month", Expense.created_at) == month)
+    keyboard = [
+        [InlineKeyboardButton(
+            text=f"📆 {month_names[m - 1]}",
+            callback_data=f"choose_month_statistic:{year}:{m}"
+        )]
+        for m in months
+    ]
+
+    keyboard.append([
+        InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_years_statistic")
+    ])
+
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+async def get_years_keyboard_statistic(session, user_id: int):
+    result = await session.execute(
+        select(func.extract('year', Expense.created_at))
+        .where(Expense.user_id == user_id)
+        .distinct()
+        .order_by(func.extract('year', Expense.created_at).desc())
     )
-    result = await session.execute(query)
-    expenses = result.all()
+    years = [int(row[0]) for row in result.all()]
 
-    if not expenses:
-        await message.answer("📊 Hozircha bu oyda harajatlar yo‘q.")
+    keyboard = [
+        [InlineKeyboardButton(text=f"📅 {year}", callback_data=f"stat_year:{user_id}:{year}")]
+        for year in years
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+async def get_years_keyboard_for_months(session, user_id: int):
+    result = await session.execute(
+        select(func.extract('year', Expense.created_at))
+        .where(Expense.user_id == user_id)
+        .distinct()
+        .order_by(func.extract('year', Expense.created_at).desc())
+    )
+    years = [int(row[0]) for row in result.all()]
+
+    keyboard = [
+        [InlineKeyboardButton(text=f"📆 {year}", callback_data=f"choose_year:{user_id}:{year}")]
+        for year in years
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+def get_months_keyboard_statistic(year: int, months: list[int]):
+    month_names = [
+        "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+        "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"
+    ]
+    keyboard = [
+        [InlineKeyboardButton(
+            text=f"📆 {month_names[m - 1]}",
+            callback_data=f"choose_month_statistic:{year}:{m}"
+        )]
+        for m in months
+    ]
+    keyboard.append([InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_years_statistic")])
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+async def show_months_for_statistic(target, user_id: int, year: int, edit=False):
+    async with async_session() as session:
+        result = await session.execute(
+            select(func.extract('month', Expense.created_at))
+            .where(
+                (Expense.user_id == user_id)
+                & (func.extract('year', Expense.created_at) == year)
+            )
+            .distinct()
+            .order_by(func.extract('month', Expense.created_at).asc())
+        )
+        months = [int(row[0]) for row in result.all()]
+
+    if not months:
+        await target.answer("Bu yil uchun hech qanday harajat topilmadi.")
         return
 
-    # 🔹 Kunlik yig‘indi hisoblash
-    daily_expenses = {}
-    for amount, date in expenses:
-        local_date = date.astimezone(TZ).date()
-        daily_expenses[local_date.day] = daily_expenses.get(local_date.day, 0) + amount
+    text = f"📊 {year}-yil uchun oy tanlang (statistika):"
+    markup = get_months_keyboard_statistic(year, months)
 
-    # 🔹 Oydagi kunlar soniga qarab massiv yasash
-    import calendar
-    _, days_in_month = calendar.monthrange(year, month)
+    if edit:
+        await target.edit_text(text, reply_markup=markup)
+    else:
+        await target.answer(text, reply_markup=markup)
 
-    x_days = list(range(1, days_in_month + 1))
-    y_amounts = [daily_expenses.get(day, 0) for day in x_days]
 
-    # 🔹 Grafik yasash
-    plt.style.use('seaborn-v0_8-darkgrid')
-    plt.figure(figsize=(8, 4))
-    plt.plot(x_days, y_amounts, marker='o', linewidth=2, color='royalblue')
-    plt.title(f"{now.strftime('%B %Y')} oyi harajatlari", fontsize=12)
-    plt.xlabel("Kun", fontsize=10)
-    plt.ylabel("Harajat (so‘m)", fontsize=10)
-    plt.tight_layout()
+async def generate_year_chart(year: int, data):
+    months = [int(row[0]) for row in data]
+    totals = [float(row[1]) for row in data]
 
-    # 🔹 Grafikni yuborish
+    plt.figure(figsize=(7, 4))
+    plt.bar(months, totals, color="skyblue")
+    plt.title(f"{year}-yil bo‘yicha oylik harajatlar")
+    plt.xlabel("Oy")
+    plt.ylabel("So‘m")
+    plt.xticks(months)
+    plt.grid(True, linestyle="--", alpha=0.6)
+
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
     buf.seek(0)
     plt.close()
+    return BufferedInputFile(buf.read(), filename=f"{year}_year_chart.png")
 
-    image = BufferedInputFile(buf.getvalue(), filename="monthly_stats.png")
-    await message.answer_photo(photo=image, caption="📊 Joriy oy bo‘yicha harajatlar grafigi.")
+
+async def generate_month_chart(year: int, month: int, data):
+    days = [int(row[0]) for row in data]
+    totals = [float(row[1]) for row in data]
+
+    plt.figure(figsize=(8, 4))
+    plt.plot(days, totals, marker="o", linewidth=2, color="dodgerblue")
+    plt.title(f"{year}-{month}-oy bo‘yicha kunlik harajatlar")
+    plt.xlabel("Kun")
+    plt.ylabel("So‘m")
+    plt.grid(True)
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    buf.seek(0)
+    plt.close()
+    return BufferedInputFile(buf.read(), filename=f"{year}_{month}_month_chart.png")

@@ -86,6 +86,7 @@ async def show_main_menu(message: types.Message):
     await message.answer("🏠 Asosiy menyu:", reply_markup=keyboard)
 
 
+
 def get_pagination_keyboard(page: int, has_next: bool, year=None, month=None):
     builder = InlineKeyboardBuilder()
     if page > 1:

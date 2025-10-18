@@ -8,7 +8,6 @@ from sqlalchemy import select, func
 from app.database import async_session, Expense
 
 
-# 📊 Asosiy statistika menyusi
 def get_statistics_action_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[

@@ -34,13 +34,18 @@ async def expense_menu(message: types.Message):
         await show_statistics_menu(message)
 
     elif text == "⬅️ Orqaga":
-        await message.answer("🏠 Asosiy menyuga qaytdingiz.", reply_markup=show_main_menu())
+        await back_to_home_menu(message)
 
     else:
         await message.answer(
             "💰 Harajatlar bo'limiga o'tdingiz. Quyidagilardan birini tanlang:",
             reply_markup=get_expense_keyboard()
         )
+
+@router.message(F.text == "⬅️ Orqaga")
+async def back_to_home_menu(message: types.Message):
+    await show_main_menu(message)
+
 
 @router.message(F.text == "➕ Harajat qo'shish")
 async def add_expense_start(message: types.Message, state: FSMContext):

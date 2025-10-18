@@ -1,7 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 from app.database import init_db
-from app.handlers import expense, start
+from app.handlers import expense, start, statistics
 from app.config import BOT_TOKEN
 
 
@@ -14,6 +14,7 @@ async def main():
 
     dp.include_router(start.router)
     dp.include_router(expense.router)
+    dp.include_router(statistics.router)
 
     print("🤖 Bot ishga tushdi...")
     await dp.start_polling(bot)

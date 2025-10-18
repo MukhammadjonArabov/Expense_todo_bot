@@ -4,13 +4,6 @@ from aiogram.types import (
     ReplyKeyboardMarkup, KeyboardButton
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-import calendar
-import io, calendar, matplotlib.pyplot as plt
-from aiogram.types import BufferedInputFile
-from sqlalchemy import select, func
-
-from app.database import Expense
-
 
 def get_pagination_keyboard(page: int, has_next: bool):
     nav_buttons = []
@@ -103,28 +96,5 @@ def get_pagination_keyboard(page: int, has_next: bool, year=None, month=None):
     return builder.as_markup()
 
 ############# statistika ==========================================================================================
-
-def get_statistics_action_keyboard():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [
-                KeyboardButton(text="📆 Oylik statistika"),
-                KeyboardButton(text="📅 Yillik statistika"),
-            ],
-            [KeyboardButton(text="🔙 Menyuga qaytish")],
-        ],
-        resize_keyboard=True
-    )
-
-def get_years_keyboard_statistic(years: list[int], user_id: int):
-    keyboard = [
-        [InlineKeyboardButton(
-            text=f"📅 {year}-yil",
-            callback_data=f"choose_year_statistic:{user_id}:{year}"
-        )]
-        for year in years
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
-
 
 

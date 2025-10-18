@@ -21,7 +21,6 @@ def get_statistics_action_keyboard():
     )
 
 
-# 🗓 YILLAR klaviaturasi
 async def get_years_keyboard_statistic(session, user_id: int):
     result = await session.execute(
         select(func.extract('year', Expense.created_at))
@@ -41,7 +40,6 @@ async def get_years_keyboard_statistic(session, user_id: int):
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-# 📅 OYLAR klaviaturasi
 def get_months_keyboard_statistic(year: int, months: list[int]):
     month_names = [
         "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
@@ -56,6 +54,16 @@ def get_months_keyboard_statistic(year: int, months: list[int]):
         for m in months
     ]
     keyboard.append([
-        InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_years_statistic")
+        InlineKeyboardButton(text="🔙 Orqaga", callback_data=f"back_to_years_month_statistic")
     ])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def get_back_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🔙 Menyuga qaytish")]
+        ],
+        resize_keyboard=True
+    )
+

@@ -1,17 +1,11 @@
-import io
-import matplotlib.pyplot as plt
-from app.database import async_session
+from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import pytz
-import io
-from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, \
-    KeyboardButton, InputFile
-import matplotlib.pyplot as plt
 from datetime import datetime
-from app.addition.inline import get_pagination_keyboard, get_expenses_action_keyboard
+from app.addition.inline import get_pagination_keyboard, get_expenses_action_keyboard, get_expense_keyboard
 from app.database import Expense
-from sqlalchemy import select, extract, func
-import calendar
+from sqlalchemy import select, extract
+from aiogram import types
 from app.database import User
 
 ITEMS_PER_PAGE = 10
@@ -84,5 +78,19 @@ class CustomStats(StatesGroup):
     start_date = State()
 
 TZ = pytz.timezone("Asia/Tashkent")
+
+
+async def back_to_menu(message: types.Message):
+    await message.answer(
+        "📋 Siz asosiy menyuga qaytdingiz.",
+        reply_markup=get_expense_keyboard()
+    )
+
+
+async def cancel_adding_expense(message: types.Message, state: FSMContext):
+    """Harajat qo‘shish jarayonini bekor qilish"""
+    await state.clear()
+    await back_to_menu(message)
+
 
 

@@ -1,4 +1,4 @@
-from aiogram import types, F
+from aiogram import types
 from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
     ReplyKeyboardMarkup, KeyboardButton
@@ -21,11 +21,11 @@ def get_expenses_action_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [
+                KeyboardButton(text="📆 Yil va oy bo‘yicha ko‘rish"),
                 KeyboardButton(text="🗑 O'chirish"),
-                KeyboardButton(text="🔙 Menyuga qaytish"),
             ],
             [
-                KeyboardButton(text="📆 Yil va oy bo‘yicha ko‘rish"),
+                KeyboardButton(text="🔙 Menyuga qaytish"),
             ]
         ],
         resize_keyboard=True
@@ -95,7 +95,3 @@ def get_pagination_keyboard(page: int, has_next: bool, year=None, month=None):
         builder.button(text="➡️ Keyingisi", callback_data=f"expenses_page:{page + 1}:{year}:{month}")
     builder.adjust(2)
     return builder.as_markup()
-
-############# statistika ==========================================================================================
-
-

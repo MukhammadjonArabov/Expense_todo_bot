@@ -4,10 +4,9 @@ from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExp
 from app.addition.inline import get_expense_keyboard, get_expenses_action_keyboard, get_years_keyboard, \
     show_main_menu, get_months_keyboard
 from app.addition.keyboards import get_back_keyboard
-from app.database import async_session, Expense, User
-from sqlalchemy import select, func, extract
-from datetime import datetime, timedelta
-import calendar
+from app.database import async_session, Expense
+from sqlalchemy import select, func
+from datetime import datetime
 
 from app.handlers.statistics import show_statistics_menu
 
@@ -148,8 +147,6 @@ async def add_expense_date(message: types.Message, state: FSMContext):
     )
     await state.clear()
 
-############################################# Harajatlar ro'yxati ######################################################
-
 @router.callback_query(F.data.startswith("expenses_page:"))
 async def change_expense_page(callback: types.CallbackQuery):
     page = int(callback.data.split(":")[1])
@@ -202,7 +199,6 @@ async def delete_expense_by_id(message: types.Message, state: FSMContext):
 
         await message.answer(f"✅ Harajat o‘chirildi (ID: {expense_id}).")
         await state.clear()
-############################################## Harajatlar ro'yxati #####################################################
 
 
 # Default — o'tgan va hozirgi oy

@@ -2,11 +2,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import pytz
 from datetime import datetime
-from app.addition.inline import get_pagination_keyboard, get_expenses_action_keyboard, get_expense_keyboard
 from app.database import Expense
 from sqlalchemy import select, extract
 from aiogram import types
 from app.database import User
+from app.keyboards.expanse_main import get_pagination_keyboard, get_expenses_action_keyboard, get_expense_keyboard
 
 ITEMS_PER_PAGE = 10
 

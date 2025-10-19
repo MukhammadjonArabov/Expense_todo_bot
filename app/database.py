@@ -1,8 +1,12 @@
 import os
+import enum
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, Integer, String, select, BigInteger, ForeignKey, DateTime, func
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship
+from sqlalchemy import (
+    Column, Integer, String, BigInteger, Boolean, ForeignKey,
+    DateTime, Text, Enum, func, select
+)
 
 load_dotenv()
 
@@ -12,6 +16,7 @@ if not DATABASE_URL:
 
 Base = declarative_base()
 
+# Asinxron ulanish
 engine = create_async_engine(
     DATABASE_URL,
     echo=True
@@ -23,47 +28,94 @@ async_session = sessionmaker(
     expire_on_commit=False
 )
 
+# ============================
+# MODELLAR
+# ============================
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(BigInteger, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, unique=True, nullable=False, index=True)  # O'zgartirildi
+    telegram_id = Column(BigInteger, unique=True, nullable=False, index=True)
     username = Column(String, nullable=True)
     user_link = Column(String, nullable=True)
     phone = Column(String, nullable=False)
+
+    projects_created = relationship("Project", back_populates="creator")
+    tasks_assigned = relationship("Task", back_populates="assigned_user")
+
 
 class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(BigInteger, primary_key=True, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False)
     reason = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class RoleEnum(enum.Enum):
+    admin = "admin"
+    member = "member"
+    viewer = "viewer"
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    name = Column(String(155), nullable=False)
+    description = Column(Text, nullable=True)
+    create_by = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    create_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    creator = relationship("User", back_populates="projects_created")
+    members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
+
+
+class ProjectMember(Base):
+    __tablename__ = "project_members"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    project_id = Column(BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role = Column(Enum(RoleEnum), default=RoleEnum.member, nullable=False)
+    joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    project = relationship("Project", back_populates="members")
+    user = relationship("User")
+
+
+class TaskStatusEnum(enum.Enum):
+    new = "new"
+    in_progress = "in_progress"
+    done = "done"
+    blocked = "blocked"
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    status = Column(Enum(TaskStatusEnum), default=TaskStatusEnum.new, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    deadline = Column(DateTime(timezone=True), nullable=False)
+    is_done = Column(Boolean, default=False, nullable=False)
+
+    project_id = Column(BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    assigned_to = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    project = relationship("Project", back_populates="tasks")
+    assigned_user = relationship("User", back_populates="tasks_assigned")
+
 
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("✅ Jadval(lar) yaratildi.")
-
-async def add_user(tg_id: int, username: str = None, user_link: str = None, phone: str = None):
-    if phone is None:
-        raise ValueError("Telefon raqam majburiy!")
-    async with async_session() as session:
-        result = await session.execute(select(User).where(User.telegram_id == tg_id))
-        existing_user = result.scalars().first()
-
-        if existing_user:
-            print("⚠️ Foydalanuvchi allaqachon bazada bor.")
-            return existing_user
-
-        new_user = User(
-            telegram_id=tg_id,
-            username=username,
-            user_link=user_link,
-            phone=phone
-        )
-        session.add(new_user)
-        await session.commit()
-        print("✅ Yangi foydalanuvchi qo‘shildi.")
-        return new_user

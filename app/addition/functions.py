@@ -91,6 +91,3 @@ async def cancel_adding_expense(message: types.Message, state: FSMContext):
     """Harajat qo‘shish jarayonini bekor qilish"""
     await state.clear()
     await back_to_menu(message)
-
-
-

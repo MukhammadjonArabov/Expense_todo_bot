@@ -9,7 +9,6 @@ from sqlalchemy.exc import IntegrityError
 router = Router()
 
 
-# /start komandasi
 @router.message(Command("start"))
 async def start_handler(message: types.Message):
     tg_id = message.from_user.id

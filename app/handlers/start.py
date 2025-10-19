@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 
-from app.keyboards.expanse_main import show_main_menu
+from app.keyboards.expanse_main import show_main_menu, phone_menu
 from app.database import async_session, User
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +13,6 @@ router = Router()
 async def start_handler(message: types.Message):
     tg_id = message.from_user.id
     username = message.from_user.username
-    user_link = f"https://t.me/{username}" if username else None
 
     async with async_session() as session:
         result = await session.execute(select(User).where(User.telegram_id == tg_id))
@@ -22,17 +21,7 @@ async def start_handler(message: types.Message):
     if user:
         await show_main_menu(message)
     else:
-        keyboard = types.ReplyKeyboardMarkup(
-            keyboard=[
-                [types.KeyboardButton(text="📱 Telefon raqamni yuborish", request_contact=True)]
-            ],
-            resize_keyboard=True,
-            one_time_keyboard=True
-        )
-        await message.answer(
-            "👋 Salom! Iltimos, ro'yxatdan o'tish uchun telefon raqamingizni yuboring:",
-            reply_markup=keyboard
-        )
+        await phone_menu(message)
 
 @router.message(F.contact)
 async def contact_handler(message: types.Message):

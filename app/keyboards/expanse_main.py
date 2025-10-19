@@ -1,10 +1,10 @@
-from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
-    KeyboardButton
+    KeyboardButton,
+    Message
 )
 from sqlalchemy import select, func
 from app.database import Expense
@@ -39,12 +39,12 @@ def get_expenses_action_keyboard():
 
 
 def get_expense_keyboard():
-    return types.ReplyKeyboardMarkup(
+    return ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="➕ Harajat qo'shish")],
-            [types.KeyboardButton(text="📋 Harajatlar ro'yxati")],
-            [types.KeyboardButton(text="📊 Harajatlar statistika")],
-            [types.KeyboardButton(text="⬅️ Orqaga")]
+            [KeyboardButton(text="➕ Harajat qo'shish")],
+            [KeyboardButton(text="📋 Harajatlar ro'yxati")],
+            [KeyboardButton(text="📊 Harajatlar statistika")],
+            [KeyboardButton(text="⬅️ Orqaga")]
         ],
         resize_keyboard=True,
         one_time_keyboard=False
@@ -82,14 +82,27 @@ def get_months_keyboard(year: int, months: list[int]):
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-async def show_main_menu(message: types.Message):
-    keyboard = types.ReplyKeyboardMarkup(
+async def show_main_menu(message: Message):
+    keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text="💰 Harajatlar"), types.KeyboardButton(text="📝 Vazifalar")]
+            [KeyboardButton(text="💰 Harajatlar"), KeyboardButton(text="📝 Vazifalar")]
         ],
         resize_keyboard=True
     )
     await message.answer("🏠 Asosiy menyu:", reply_markup=keyboard)
+
+async def phone_menu(message: Message):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📱 Telefon raqamni yuborish", request_contact=True)]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+    await message.answer(
+        "👋 Salom! Iltimos, ro'yxatdan o'tish uchun telefon raqamingizni yuboring:",
+        reply_markup=keyboard
+    )
 
 
 

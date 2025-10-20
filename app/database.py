@@ -12,11 +12,10 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL .env faylda topilmadi!")
+    raise ValueError("DATABASE_URL .env not found!")
 
 Base = declarative_base()
 
-# Asinxron ulanish
 engine = create_async_engine(
     DATABASE_URL,
     echo=True
@@ -30,7 +29,7 @@ async_session = sessionmaker(
 
 
 # ============================
-# MODELLAR
+# MODELS
 # ============================
 
 class User(Base):
@@ -42,22 +41,18 @@ class User(Base):
     user_link = Column(String, nullable=True)
     phone = Column(String, nullable=False)
 
-    # 1️⃣ Projectlar bilan aloqa
     projects_created = relationship(
         "Project",
         back_populates="creator",
         cascade="all, delete-orphan"
     )
 
-    # 2️⃣ Tasklar bilan aloqa
-    # Bu user bajaruvchi (assigned_to) sifatida
     tasks_assigned = relationship(
         "Task",
         back_populates="assigned_user",
         foreign_keys="[Task.assigned_to]"
     )
 
-    # 3️⃣ Bu user taskni yaratgan (user_id)
     tasks_created = relationship(
         "Task",
         back_populates="creator_user",
@@ -127,32 +122,23 @@ class Task(Base):
     deadline = Column(DateTime(timezone=True), nullable=False)
     is_done = Column(Boolean, default=False, nullable=False)
 
-    # Foreign keys
     project_id = Column(BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # taskni yaratgan user
-    assigned_to = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # bajaruvchi user
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    assigned_to = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Aloqalar
     project = relationship("Project", back_populates="tasks")
 
-    # 1️⃣ Taskni yaratgan user
     creator_user = relationship(
         "User",
         back_populates="tasks_created",
         foreign_keys=[user_id]
     )
 
-    # 2️⃣ Task bajaruvchisi (assigned_to)
     assigned_user = relationship(
         "User",
         back_populates="tasks_assigned",
         foreign_keys=[assigned_to]
     )
-
-
-# ============================
-# Bazani yaratish funksiyasi
-# ============================
 
 async def init_db():
     async with engine.begin() as conn:

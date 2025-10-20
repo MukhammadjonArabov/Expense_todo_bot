@@ -27,7 +27,7 @@ async def expense_menu(message: types.Message):
             await show_expenses_page(message, session, user.id, page=1)
 
     elif text == "➕ Harajat qo'shish":
-        await message.answer("📝 Yangi harajat qo‘shish uchun summa va sababni kiriting...")
+        await add_expense_start(message)
 
     elif text == "📊 Harajatlar statistika":
         await show_statistics_menu(message)
@@ -50,7 +50,7 @@ async def back_to_home_menu(message: types.Message):
 async def add_expense_start(message: types.Message, state: FSMContext):
     await message.answer(
         "💰 Harajat summasini kiriting (faqat musbat butun son):",
-        reply_markup=get_back_keyboard()
+        reply_markup=await get_back_keyboard()
     )
     await state.set_state(AddExpense.amount)
 
@@ -68,7 +68,7 @@ async def add_expense_amount(message: types.Message, state: FSMContext):
         await message.answer(
             "📝 Harajat sababini kiriting.\n"
             "Agar sabab bo‘lmasa, '-' belgini kiriting!",
-            reply_markup=get_back_keyboard()
+            reply_markup=await get_back_keyboard()
         )
         await state.set_state(AddExpense.reason)
     except ValueError:
@@ -88,7 +88,7 @@ async def add_expense_reason(message: types.Message, state: FSMContext):
     await message.answer(
         "📅 Sana va vaqtni kiriting (masalan: 2025-10-14 14:30)\n"
         "Hozirgi vaqtni kiritish uchun '-' belgini kiriting!",
-        reply_markup=get_back_keyboard()
+        reply_markup=await get_back_keyboard()
     )
     await state.set_state(AddExpense.date)
 

@@ -147,7 +147,7 @@ async def get_years_keyboard_statistic(session, user_id: int):
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-def get_months_keyboard_statistic(year: int, months: list[int]):
+async def get_months_keyboard_statistic(year: int, months: list[int]):
     month_names = [
         "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
         "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"
@@ -166,7 +166,7 @@ def get_months_keyboard_statistic(year: int, months: list[int]):
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-def get_back_keyboard():
+async def get_back_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🔙 Menyuga qaytish")]

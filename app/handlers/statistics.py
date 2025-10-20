@@ -61,7 +61,7 @@ async def show_statistics_menu(message: types.Message):
     # Asosiy statistika menyusi
     await message.answer(
         "📊 Qaysi turdagi statistika kerak?",
-        reply_markup=get_statistics_action_keyboard()
+        reply_markup=await get_statistics_action_keyboard()
     )
 
 

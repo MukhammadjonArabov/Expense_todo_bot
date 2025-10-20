@@ -55,7 +55,7 @@ async def show_expenses_page(target, session, user_id: int, page: int = 1, year=
             f"───────────────────────\n"
         )
 
-    inline_kb = get_pagination_keyboard(page, has_next, year, month)
+    inline_kb = await get_pagination_keyboard(page, has_next, year, month)
 
     if edit:
         await target.edit_text(text, reply_markup=inline_kb, parse_mode="HTML")

@@ -106,7 +106,7 @@ async def phone_menu(message: Message):
 
 
 
-def get_pagination_keyboard(page: int, has_next: bool, year=None, month=None):
+async def get_pagination_keyboard(page: int, has_next: bool, year=None, month=None):
     builder = InlineKeyboardBuilder()
     if page > 1:
         builder.button(text="⬅️ Orqaga", callback_data=f"expenses_page:{page - 1}:{year}:{month}")
@@ -115,7 +115,7 @@ def get_pagination_keyboard(page: int, has_next: bool, year=None, month=None):
     builder.adjust(2)
     return builder.as_markup()
 
-def get_statistics_action_keyboard():
+async def get_statistics_action_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [

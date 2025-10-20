@@ -1,5 +1,4 @@
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 import pytz
 from datetime import datetime
 from app.database import Expense
@@ -63,19 +62,6 @@ async def show_expenses_page(target, session, user_id: int, page: int = 1, year=
         await target.answer(text, reply_markup=inline_kb, parse_mode="HTML")
         await target.answer("👇 Quyidagi harakatlardan birini tanlang:", reply_markup=get_expenses_action_keyboard())
 
-
-class DeleteExpense(StatesGroup):
-    waiting_for_id = State()
-
-class AddExpense(StatesGroup):
-    amount = State()
-    reason = State()
-    date = State()
-
-
-
-class CustomStats(StatesGroup):
-    start_date = State()
 
 TZ = pytz.timezone("Asia/Tashkent")
 

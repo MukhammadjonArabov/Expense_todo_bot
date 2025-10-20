@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from sqlalchemy import (
     Column, Integer, String, BigInteger, Boolean, ForeignKey,
-    DateTime, Text, Enum, func
+    DateTime, Text, Enum, func, Date,
 )
 
 load_dotenv()
@@ -57,6 +57,12 @@ class User(Base):
         "Task",
         back_populates="creator_user",
         foreign_keys="[Task.user_id]"
+    )
+
+    personal_tasks = relationship(
+        "PersonalTask",
+        back_populates="user",
+        cascade="all, delete-orphan"
     )
 
 
@@ -139,6 +145,18 @@ class Task(Base):
         back_populates="tasks_assigned",
         foreign_keys=[assigned_to]
     )
+
+class PersonalTask(Base):
+    __tablename__ = "personal_tasks"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    deadline = Column(Date, nullable=False)
+    is_completed = Column(Integer, default=0)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="personal_tasks")
 
 async def init_db():
     async with engine.begin() as conn:

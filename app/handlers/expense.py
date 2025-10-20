@@ -1,6 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from app.addition.functions import show_expenses_page, AddExpense, TZ, DeleteExpense, get_user, cancel_adding_expense
+from app.addition.functions import show_expenses_page, TZ, get_user, cancel_adding_expense
+from app.addition.state import AddExpense, DeleteExpense
 from app.database import async_session, Expense
 from sqlalchemy import select, func
 from datetime import datetime

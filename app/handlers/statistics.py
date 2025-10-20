@@ -7,13 +7,10 @@ from app.addition.functions import get_user
 from app.keyboards.expanse_main import get_statistics_action_keyboard
 from app.addition.charts import generate_year_chart, generate_month_chart
 
-TZ = datetime.now().astimezone().tzinfo  # foydalanuvchi vaqt mintaqasi
+TZ = datetime.now().astimezone().tzinfo
 router = Router()
 
 
-# =====================================================
-# 📊 ASOSIY STATISTIKA — joriy oy uchun grafig bilan
-# =====================================================
 @router.message(F.text == "📊 Harajatlar statistika")
 async def show_statistics_menu(message: types.Message):
     """Foydalanuvchiga joriy oy uchun statistikani ko‘rsatadi."""

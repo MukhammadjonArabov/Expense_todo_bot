@@ -1,10 +1,11 @@
 from aiogram.fsm.context import FSMContext
 import pytz
 from datetime import datetime
-from app.database import Expense
-from sqlalchemy import select, extract
+from app.database import Expense, PersonalTask
+from sqlalchemy import select, extract, func
 from aiogram import types
 from app.database import User
+from app.database import async_session
 from app.keyboards.expanse_main import get_pagination_keyboard, get_expenses_action_keyboard, get_expense_keyboard
 
 ITEMS_PER_PAGE = 10
@@ -77,3 +78,41 @@ async def cancel_adding_expense(message: types.Message, state: FSMContext):
     """Harajat qo‘shish jarayonini bekor qilish"""
     await state.clear()
     await back_to_menu(message)
+
+async def get_task_statistics(user_id: int):
+    async with async_session() as session:
+        now = datetime.now(TZ).date()
+
+        # ✅ Jami vazifalar soni
+        total_query = select(func.count()).where(PersonalTask.user_id == user_id)
+        total = (await session.execute(total_query)).scalar()
+
+        # ✅ Bajarilgan vazifalar
+        completed_query = select(func.count()).where(
+            PersonalTask.user_id == user_id,
+            PersonalTask.is_completed == 1
+        )
+        completed = (await session.execute(completed_query)).scalar()
+
+        # ✅ Bajarilmagan vazifalar (muddati o‘tgan yoki bajarilmagan)
+        not_completed_query = select(func.count()).where(
+            PersonalTask.user_id == user_id,
+            PersonalTask.is_completed == 0,
+            PersonalTask.deadline <= now
+        )
+        not_completed = (await session.execute(not_completed_query)).scalar()
+
+        # ✅ Bajarish kutilayotganlar (hali muddati kelmagan)
+        upcoming_query = select(func.count()).where(
+            PersonalTask.user_id == user_id,
+            PersonalTask.is_completed == 0,
+            PersonalTask.deadline > now
+        )
+        upcoming = (await session.execute(upcoming_query)).scalar()
+
+        return {
+            "total": total,
+            "completed": completed,
+            "not_completed": not_completed,
+            "upcoming": upcoming
+        }

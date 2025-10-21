@@ -5,6 +5,7 @@ from datetime import datetime
 from app.addition.functions import TZ, get_user
 from app.addition.state import AddPersonalTask
 from app.database import async_session, Task, PersonalTask
+from app.keyboards.expanse_main import show_main_menu
 from app.keyboards.tasks_keyboard import (
    get_tasks_action_keyboard,
    get_personal_tasks_keyboard,
@@ -34,7 +35,12 @@ async def add_task_start(message: types.Message, state: FSMContext):
 @router.message(F.text == "❌ To‘xtatish")
 async def cancel_task_addition(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("🚫 Vazifa qo‘shish bekor qilindi.", reply_markup=get_personal_tasks_keyboard())
+    await message.answer("🚫 Vazifa qo‘shish bekor qilindi.", reply_markup= await get_personal_tasks_keyboard())
+
+@router.message(F.text == "⬅️ Ortga qaytish")
+async def come_back_task_manu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("📝 Vazifalar menyusiga qaytdingiz!", reply_markup=await get_tasks_action_keyboard())
 
 @router.message(AddPersonalTask.title)
 async def add_task_title(message: types.Message, state: FSMContext):
@@ -94,3 +100,8 @@ async def add_task_description(message: types.Message, state: FSMContext):
 
     await message.answer("✅ Vazifa muvaffaqiyatli qo‘shildi!", reply_markup= await get_personal_tasks_keyboard())
     await state.clear()
+
+@router.message(F.text == "🔙 Orqaga")
+async def add_task_back(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("🏠 Asosoiy menyuga qaytdingiz", reply_markup=await show_main_menu())

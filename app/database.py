@@ -149,13 +149,13 @@ class Task(Base):
 class PersonalTask(Base):
     __tablename__ = "personal_tasks"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     deadline = Column(Date, nullable=False)
     is_completed = Column(Integer, default=0)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="personal_tasks")
 
 async def init_db():

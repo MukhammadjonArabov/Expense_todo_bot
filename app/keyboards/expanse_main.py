@@ -82,14 +82,16 @@ def get_months_keyboard(year: int, months: list[int]):
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-async def show_main_menu(message: Message):
-    keyboard = ReplyKeyboardMarkup(
+async def show_main_menu():
+    return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="💰 Harajatlar"), KeyboardButton(text="📝 Vazifalar")]
+            [
+                KeyboardButton(text="💰 Harajatlar"),
+                KeyboardButton(text="📝 Vazifalar")
+            ]
         ],
         resize_keyboard=True
     )
-    await message.answer("🏠 Asosiy menyu:", reply_markup=keyboard)
 
 async def phone_menu(message: Message):
     keyboard = ReplyKeyboardMarkup(

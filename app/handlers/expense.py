@@ -43,8 +43,9 @@ async def expense_menu(message: types.Message):
         )
 
 @router.message(F.text == "⬅️ Orqaga")
-async def back_to_home_menu(message: types.Message):
-    await show_main_menu(message)
+async def back_to_home_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("🏠 Asosiy menyuga qaytdingiz!", reply_markup= await show_main_menu())
 
 
 @router.message(F.text == "➕ Harajat qo'shish")

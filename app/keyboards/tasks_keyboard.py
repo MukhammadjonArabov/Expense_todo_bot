@@ -16,10 +16,29 @@ async def get_tasks_action_keyboard():
 async def get_personal_tasks_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="➕ Vazifa qo‘shish")],
-            [KeyboardButton(text="📋 Vazifalar ro‘yxati")],
-            [KeyboardButton(text="✅ Bajarilgan vazifalar")],
-            [KeyboardButton(text="⬅️ Orqaga")]
+            [
+                KeyboardButton(text="➕ Vazifa qo‘shish"),
+                KeyboardButton(text="📋 Vazifalar ro‘yxati")
+            ],
+            [
+                KeyboardButton(text="⬅️ Ortga qaytish")
+            ],
+
+        ],
+        resize_keyboard=True
+    )
+
+async def get_tasks_list_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text="✅ Bajarilganlar"),
+                KeyboardButton(text="❌ Bajarilmaganlar")
+            ],
+            [
+                KeyboardButton(text="🕒 Bajarilishi keraklar"),
+                KeyboardButton(text="⬅️ Ortga")
+            ]
         ],
         resize_keyboard=True
     )

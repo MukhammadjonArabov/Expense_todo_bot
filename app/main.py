@@ -1,7 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 from app.database import init_db
-from app.handlers import expense, start, statistics, tasks_add, tasks_list
+from app.handlers import expense, start, statistics, tasks_add, tasks_list, tasks_assignment
 from app.config import BOT_TOKEN
 from app.addition.commands import set_bot_commands
 
@@ -18,6 +18,7 @@ async def main():
     dp.include_router(statistics.router)
     dp.include_router(tasks_add.router)
     dp.include_router(tasks_list.router)
+    dp.include_router(tasks_assignment.router)
 
     await set_bot_commands(bot)
 

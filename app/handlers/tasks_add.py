@@ -26,16 +26,18 @@ async def show_personal_tasks_menu(message: types.Message):
 @router.message(F.text == "➕ Vazifa qo‘shish")
 async def add_task_start(message: types.Message, state: FSMContext):
     await message.answer(
-        "✍️ Yangi vazifaning nomini kiriting:\n\n"
-        "❌ To‘xtatish — jarayonni bekor qiladi.",
+        "✍️ Yangi vazifaning nomini kiriting:",
         reply_markup=await get_cancel_keyboard()
     )
     await state.set_state(AddPersonalTask.title)
 
-@router.message(F.text == "❌ To‘xtatish")
+@router.message(F.text == "⬅️ Qaytish")
 async def cancel_task_addition(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("🚫 Vazifa qo‘shish bekor qilindi.", reply_markup= await get_personal_tasks_keyboard())
+    await message.answer(
+        "👇 Quydagilardan birini tanlang",
+        reply_markup= await get_personal_tasks_keyboard()
+    )
 
 @router.message(F.text == "⬅️ Ortga qaytish")
 async def come_back_task_manu(message: types.Message, state: FSMContext):

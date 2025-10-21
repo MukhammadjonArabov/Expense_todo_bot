@@ -67,48 +67,48 @@ async def show_expenses_page(target, session, user_id: int, page: int = 1, year=
 TZ = pytz.timezone("Asia/Tashkent")
 
 
-async def back_to_menu(message: types.Message):
+async def cancel_adding_expense(message: types.Message, state: FSMContext):
+    """Harajat qo‘shish jarayonini bekor qilish"""
+    await state.clear()
     await message.answer(
         "📋 Siz asosiy menyuga qaytdingiz.",
         reply_markup=get_expense_keyboard()
     )
 
-
-async def cancel_adding_expense(message: types.Message, state: FSMContext):
-    """Harajat qo‘shish jarayonini bekor qilish"""
-    await state.clear()
-    await back_to_menu(message)
-
-async def get_task_statistics(user_id: int):
+async def get_task_statistics(telegram_id: int):
     async with async_session() as session:
+        user = await get_user(session, telegram_id)
+        if not user:
+            return {
+                "total": 0,
+                "completed": 0,
+                "not_completed": 0,
+                "upcoming": 0
+            }
+
         now = datetime.now(TZ).date()
+        total_query = select(func.count()).where(PersonalTask.user_id == user.id)
+        total = (await session.execute(total_query)).scalar() or 0
 
-        # ✅ Jami vazifalar soni
-        total_query = select(func.count()).where(PersonalTask.user_id == user_id)
-        total = (await session.execute(total_query)).scalar()
-
-        # ✅ Bajarilgan vazifalar
         completed_query = select(func.count()).where(
-            PersonalTask.user_id == user_id,
+            PersonalTask.user_id == user.id,
             PersonalTask.is_completed == 1
         )
-        completed = (await session.execute(completed_query)).scalar()
+        completed = (await session.execute(completed_query)).scalar() or 0
 
-        # ✅ Bajarilmagan vazifalar (muddati o‘tgan yoki bajarilmagan)
         not_completed_query = select(func.count()).where(
-            PersonalTask.user_id == user_id,
+            PersonalTask.user_id == user.id,
             PersonalTask.is_completed == 0,
             PersonalTask.deadline <= now
         )
-        not_completed = (await session.execute(not_completed_query)).scalar()
+        not_completed = (await session.execute(not_completed_query)).scalar() or 0
 
-        # ✅ Bajarish kutilayotganlar (hali muddati kelmagan)
         upcoming_query = select(func.count()).where(
-            PersonalTask.user_id == user_id,
+            PersonalTask.user_id == user.id,
             PersonalTask.is_completed == 0,
             PersonalTask.deadline > now
         )
-        upcoming = (await session.execute(upcoming_query)).scalar()
+        upcoming = (await session.execute(upcoming_query)).scalar() or 0
 
         return {
             "total": total,

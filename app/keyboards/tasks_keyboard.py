@@ -21,6 +21,7 @@ async def get_personal_tasks_keyboard():
                 KeyboardButton(text="📋 Vazifalar ro‘yxati")
             ],
             [
+                KeyboardButton(text="✍️ Bajarilganlarni belgilash"),
                 KeyboardButton(text="⬅️ Ortga qaytish")
             ],
 
@@ -46,7 +47,7 @@ async def get_tasks_list_keyboard():
 async def get_cancel_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="❌ To‘xtatish")]
+            [KeyboardButton(text="⬅️ Qaytish")]
         ],
         resize_keyboard=True
     )

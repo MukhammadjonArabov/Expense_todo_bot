@@ -18,7 +18,8 @@ async def start_handler(message: types.Message):
         user = result.scalars().first()
 
     if user:
-        await show_main_menu(message)
+        keyboard = await show_main_menu()
+        await message.answer("🏠 Asosiy menyu:", reply_markup=keyboard)
     else:
         await phone_menu(message)
 

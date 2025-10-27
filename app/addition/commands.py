@@ -1,7 +1,6 @@
 from aiogram.types import BotCommand
 from aiogram import Bot
 
-
 async def set_bot_commands(bot: Bot):
     """
     Bot komandalarini Telegramda avtomatik ro'yxatdan o'tkazadi.

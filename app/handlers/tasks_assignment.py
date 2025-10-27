@@ -4,9 +4,8 @@ from sqlalchemy import select
 from datetime import datetime
 
 from app.database import async_session, PersonalTask
-from app.addition.functions import get_user
+from app.addition.functions import get_user, TZ
 from app.keyboards.tasks_keyboard import get_cancel_keyboard, get_personal_tasks_keyboard
-from app.handlers.statistics import TZ
 
 router = Router()
 
@@ -31,7 +30,7 @@ async def mark_task_as_done(message: types.Message):
 
         if not tasks:
             await message.answer(
-                "📅 Siz bugun uchun vazifalar kiritmadingiz.",
+                "📅 Siz bugun uchun vazifalar kiritmagansiz.",
                 reply_markup=await get_personal_tasks_keyboard()
             )
             return
@@ -47,31 +46,35 @@ async def mark_task_as_done(message: types.Message):
             )
 
             keyboard = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{task.id}"),
-                        InlineKeyboardButton(text="❌ Bajarmadim", callback_data=f"notdone_{task.id}")
-                    ]
-                ]
+                inline_keyboard=[[
+                    InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{task.id}"),
+                    InlineKeyboardButton(text="❌ Bajarmadim", callback_data=f"notdone_{task.id}")
+                ]]
             )
             await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
-# ------------------ ✅ BAJARDIM TUGMASI ------------------
+# ------------------ ✅ Bajardim tugmasi ------------------
 @router.callback_query(F.data.startswith("done_"))
 async def set_task_done(callback: types.CallbackQuery):
     task_id = int(callback.data.split("_")[1])
+    now = datetime.now(TZ).date()
 
     async with async_session() as session:
         task = await session.get(PersonalTask, task_id)
+
         if not task:
             await callback.answer("Vazifa topilmadi.", show_alert=True)
+            return
+
+        # ❗ Faqat bugungi vazifa o‘zgartiriladi
+        if task.deadline != now:
+            await callback.answer("⛔ Siz faqat bugungi vazifalarni o‘zgartira olasiz.", show_alert=True)
             return
 
         if not task.is_completed:
             task.is_completed = 1
             await session.commit()
 
-        # yangilangan matn
         status = "✅ Bajarilgan"
         new_text = (
             f"<b>🧠 Mavzu:</b> {task.title}\n\n"
@@ -80,33 +83,37 @@ async def set_task_done(callback: types.CallbackQuery):
         )
 
         keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{task.id}"),
-                    InlineKeyboardButton(text="❌ Bajarmadim", callback_data=f"notdone_{task.id}")
-                ]
-            ]
+            inline_keyboard=[[
+                InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{task.id}"),
+                InlineKeyboardButton(text="❌ Bajarmadim", callback_data=f"notdone_{task.id}")
+            ]]
         )
 
         await callback.message.edit_text(new_text, reply_markup=keyboard, parse_mode="HTML")
         await callback.answer("✅ Vazifa bajarilgan deb belgilandi.")
 
-# ------------------ ❌ BAJARMADIM TUGMASI ------------------
+# ------------------ ❌ Bajarmadim tugmasi ------------------
 @router.callback_query(F.data.startswith("notdone_"))
 async def set_task_not_done(callback: types.CallbackQuery):
     task_id = int(callback.data.split("_")[1])
+    now = datetime.now(TZ).date()
 
     async with async_session() as session:
         task = await session.get(PersonalTask, task_id)
+
         if not task:
             await callback.answer("Vazifa topilmadi.", show_alert=True)
+            return
+
+        # ❗ Faqat bugungi vazifa o‘zgartiriladi
+        if task.deadline != now:
+            await callback.answer("⛔ Siz faqat bugungi vazifalarni o‘zgartira olasiz.", show_alert=True)
             return
 
         if task.is_completed:
             task.is_completed = 0
             await session.commit()
 
-        # yangilangan matn
         status = "❌ Bajarilmagan"
         new_text = (
             f"<b>🧠 Mavzu:</b> {task.title}\n\n"
@@ -115,12 +122,10 @@ async def set_task_not_done(callback: types.CallbackQuery):
         )
 
         keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{task.id}"),
-                    InlineKeyboardButton(text="❌ Bajarmadim", callback_data=f"notdone_{task.id}")
-                ]
-            ]
+            inline_keyboard=[[
+                InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{task.id}"),
+                InlineKeyboardButton(text="❌ Bajarmadim", callback_data=f"notdone_{task.id}")
+            ]]
         )
 
         await callback.message.edit_text(new_text, reply_markup=keyboard, parse_mode="HTML")

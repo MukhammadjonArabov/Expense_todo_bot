@@ -9,6 +9,7 @@ from app.database import async_session
 from app.keyboards.expanse_main import get_pagination_keyboard, get_expenses_action_keyboard, get_expense_keyboard
 
 ITEMS_PER_PAGE = 10
+TZ = pytz.timezone("Asia/Tashkent")
 
 async def get_user(session, telegram_id: int) -> User | None:
     result = await session.execute(select(User).where(User.telegram_id == telegram_id))
@@ -62,9 +63,6 @@ async def show_expenses_page(target, session, user_id: int, page: int = 1, year=
     else:
         await target.answer(text, reply_markup=inline_kb, parse_mode="HTML")
         await target.answer("👇 Quyidagi harakatlardan birini tanlang:", reply_markup=get_expenses_action_keyboard())
-
-
-TZ = pytz.timezone("Asia/Tashkent")
 
 
 async def cancel_adding_expense(message: types.Message, state: FSMContext):

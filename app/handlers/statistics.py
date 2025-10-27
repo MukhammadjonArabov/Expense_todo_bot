@@ -3,11 +3,10 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy import select, func
 from datetime import datetime
 from app.database import async_session, Expense
-from app.addition.functions import get_user
+from app.addition.functions import get_user, TZ
 from app.keyboards.expanse_main import get_statistics_action_keyboard
 from app.addition.charts import generate_year_chart, generate_month_chart
 
-TZ = datetime.now().astimezone().tzinfo
 router = Router()
 
 

@@ -33,16 +33,13 @@ async def get_tasks_list_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [
-                KeyboardButton(text="✅ Bajarilganlar"),
-                KeyboardButton(text="❌ Bajarilmaganlar")
-            ],
-            [
-                KeyboardButton(text="🕒 Bajarilishi keraklar"),
+                KeyboardButton(text="👁 Vazifalarni ko'rish"),
                 KeyboardButton(text="⬅️ Ortga")
             ]
         ],
         resize_keyboard=True
     )
+
 
 async def get_cancel_keyboard():
     return ReplyKeyboardMarkup(

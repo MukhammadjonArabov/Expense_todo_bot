@@ -22,6 +22,10 @@ async def get_my_projects_menu():
                 KeyboardButton(text="📝 Vazifa qo‘shish")
             ],
             [
+                KeyboardButton(text="🛠 Loyihani o‘zgartirish"),
+                KeyboardButton(text="✏️ Vazifalarni o‘zgartirish")
+            ],
+            [
                 KeyboardButton(text="🔙 Ortga")
             ],
         ],

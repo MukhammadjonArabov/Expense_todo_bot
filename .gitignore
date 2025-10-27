@@ -1,14 +1,20 @@
-# ===== Python umumiy fayllar =====
+# ======================
+# PYTHON UMUMIY FAYLLAR
+# ======================
 __pycache__/
 *.py[cod]
 *$py.class
 
-# ===== Virtual environment =====
+# ======================
+# VIRTUAL ENVIRONMENT
+# ======================
 venv/
 env/
 .venv/
 
-# ===== IDE va OS fayllari =====
+# ======================
+# IDE VA OS FAYLLARI
+# ======================
 .idea/
 .vscode/
 *.swp
@@ -16,7 +22,9 @@ env/
 .DS_Store
 Thumbs.db
 
-# ===== Log va cache =====
+# ======================
+# LOG VA CACHE
+# ======================
 *.log
 *.pot
 *.mo
@@ -29,23 +37,62 @@ __pycache__/
 .cache/
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 *.pid
 
-# ===== Environment fayllar =====
+# ======================
+# ENVIRONMENT FAYLLAR
+# ======================
 .env
 .env.*
+.env.local
+.env.*.local
 
-# ===== PostgreSQL backup fayllar =====
+# ======================
+# POSTGRESQL BACKUPLAR
+# ======================
 *.sql
 *.dump
 
-# ===== Aiogram bot fayllari =====
+# ======================
+# AIOGRAM BOT FAYLLARI
+# ======================
 *.session
 *.session-journal
 
-# ===== Build / dist =====
+# ======================
+# ALEMBIC / MIGRATSIYALAR
+# ======================
+alembic/__pycache__/
+alembic/versions/__pycache__/
+
+# Agar migratsiya fayllarini gitga qo‘shmoqchi bo‘lmasang — quyidagi qatorni aktiv qil:
+# alembic/versions/
+
+# ======================
+# BUILD / DIST / INSTALLATION
+# ======================
 build/
 dist/
 *.egg-info/
 .eggs/
+*.spec
+
+# ======================
+# DOCKER VA DEPLOY (ixtiyoriy)
+# ======================
+docker-compose.yml
+Dockerfile
+*.tar
+*.gz
+
+# ======================
+# MISCELLANEOUS
+# ======================
+*.bak
+*.tmp
+*.swp
+*.swo
+*.old
+*.orig

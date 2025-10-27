@@ -1,5 +1,6 @@
 import os
 import enum
+import uuid
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
@@ -90,6 +91,9 @@ class Project(Base):
     description = Column(Text, nullable=True)
     create_by = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     create_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    invite_token = Column(String(255), unique=True, nullable=False, default=lambda: uuid.uuid4().hex)
+    invite_link = Column(String(500), nullable=True)
 
     creator = relationship("User", back_populates="projects_created")
     members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")

@@ -12,3 +12,7 @@ class AddPersonalTask(StatesGroup):
     title = State()
     month_day = State()
     description = State()
+
+class CreateProject(StatesGroup):
+    name = State()
+    description = State()

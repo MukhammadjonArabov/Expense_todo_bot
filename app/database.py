@@ -79,6 +79,7 @@ class Expense(Base):
 
 class RoleEnum(enum.Enum):
     admin = "admin"
+    owner = "owner"
     member = "member"
     viewer = "viewer"
 

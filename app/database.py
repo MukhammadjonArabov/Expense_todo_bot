@@ -81,7 +81,6 @@ class RoleEnum(enum.Enum):
     admin = "admin"
     owner = "owner"
     member = "member"
-    viewer = "viewer"
 
 
 class Project(Base):
@@ -99,6 +98,10 @@ class Project(Base):
     creator = relationship("User", back_populates="projects_created")
     members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
+
+    @property
+    async def owner(self):
+        return next((m.user for m in self.members if m.role == RoleEnum.owner), None)
 
 
 class ProjectMember(Base):

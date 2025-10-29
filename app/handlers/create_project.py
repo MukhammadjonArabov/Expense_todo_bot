@@ -8,7 +8,6 @@ from app.database import async_session, Project, User, ProjectMember, RoleEnum
 from app.addition.functions import get_user
 from app.addition.generate_invite import generate_invite_link
 from app.keyboards.collective_keyboard import get_my_projects_menu, get_team_menu
-from app.keyboards.expanse_main import show_main_menu, phone_menu
 from app.addition.state import CreateProject
 
 router = Router()

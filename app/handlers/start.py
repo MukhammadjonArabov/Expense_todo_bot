@@ -117,7 +117,6 @@ async def contact_handler(message: types.Message, state: FSMContext):
         data = await state.get_data()
         token = data.get("pending_project_token")
 
-        # Agar token mavjud bo‘lsa — loyihaga qo‘shamiz
         if token:
             project_res = await session.execute(select(Project).where(Project.invite_token == token))
             project = project_res.scalars().first()

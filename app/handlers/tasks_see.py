@@ -77,10 +77,14 @@ async def show_tasks_list(callback: types.CallbackQuery):
 
     tasks, total_pages = await get_tasks_list(user.id, year, month, t_type, page)
 
-    if not tasks:
-        await callback.message.edit_text("📭 Bu bo‘limda hech qanday vazifa yo‘q.", reply_markup=get_task_type_keyboard(year, month))
-        await callback.answer()
-        return
+    try:
+        await callback.message.edit_text(
+            "📭 Bu bo‘limda hech qanday vazifa yo‘q.",
+            reply_markup=get_task_type_keyboard(year, month)
+        )
+    except Exception as e:
+        if "message is not modified" not in str(e):
+            raise e
 
     text = f"📋 <b>{year}-{month}</b> oy uchun <b>{t_type.upper()}</b> vazifalar:\n\n"
     for t in tasks:

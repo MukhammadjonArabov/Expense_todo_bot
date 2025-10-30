@@ -10,12 +10,10 @@ from app.addition.commands import set_bot_commands
 from app.services.scheduler import setup_scheduler
 
 
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
-        logging.FileHandler("bot.log", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
@@ -26,11 +24,12 @@ logger = logging.getLogger(__name__)
 async def main():
     try:
         await init_db()
-        logger.info("📦 Ma'lumotlar bazasi muvaffaqiyatli yaratildi yoki allaqachon mavjud.")
+        logger.info("Ma'lumotlar bazasi muvaffaqiyatli yaratildi yoki allaqachon mavjud.")
 
         bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher()
 
+        # Routerlarni qo'shish
         dp.include_router(start.router)
         dp.include_router(expense.router)
         dp.include_router(statistics.router)
@@ -43,14 +42,14 @@ async def main():
         await setup_scheduler(bot)
         await set_bot_commands(bot)
 
-        logger.info("🤖 Bot ishga tushdi va polling boshlandi.")
+        logger.info("Bot ishga tushdi va polling boshlandi.")
         await dp.start_polling(bot)
 
     except Exception as e:
-        logger.exception(f"❌ Bot ishga tushirishda xatolik: {e}")
+        logger.exception(f"Bot ishga tushirishda xatolik: {e}")
 
     finally:
-        logger.info("🛑 Bot to‘xtatildi.")
+        logger.info("Bot to‘xtatildi.")
 
 
 if __name__ == "__main__":

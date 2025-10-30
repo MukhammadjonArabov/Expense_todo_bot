@@ -6,6 +6,7 @@ from app.handlers import (
 )
 from app.config import BOT_TOKEN
 from app.addition.commands import set_bot_commands
+from app.services.scheduler import setup_scheduler
 
 
 async def main():
@@ -24,6 +25,7 @@ async def main():
     dp.include_router(tasks_see.router)
     dp.include_router(create_project.router)
 
+    await setup_scheduler(bot)
     await set_bot_commands(bot)
 
     print("🤖 Bot ishga tushdi...")

@@ -2,6 +2,8 @@ from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from datetime import datetime
+
+from app.addition.calendar import generate_month_days_keyboard
 from app.addition.functions import TZ, get_user
 from app.addition.state import AddPersonalTask
 from app.database import async_session, Task, PersonalTask
@@ -54,29 +56,37 @@ async def add_task_title(message: types.Message, state: FSMContext):
     await state.set_state(AddPersonalTask.month_day)
 
 @router.message(AddPersonalTask.month_day)
-async def add_task_month_day(message: types.Message, state: FSMContext):
-    text = message.text.strip()
+async def choose_date(message: types.Message, state: FSMContext):
     now = datetime.now(TZ)
-    year = now.year
-
-    try:
-        month, day = map(int, text.split("-"))
-        deadline = datetime(year, month, day, tzinfo=TZ)
-    except ValueError:
-        await message.answer("❌ Noto‘g‘ri format! Masalan: `12-31` (oy-kun)")
-        return
-
-    if deadline.date() < now.date():
-        await message.answer("⚠️ O‘tgan sana uchun vazifa qo‘ya olmaysiz! Bugundan keyingi kunni kiriting.")
-        return
-
-    await state.update_data(deadline=deadline)
     await message.answer(
-        "📝 Vazifaning tavsifini kiriting yoki 'yo‘q' deb yozing.",
+        "📅 Oy va kunni tanlang:",
+        reply_markup=generate_month_days_keyboard(now.year, now.month)
+    )
+
+@router.callback_query(F.data.startswith("change_month"))
+async def change_month(callback: types.CallbackQuery):
+    _, date_str = callback.data.split(":")
+    year, month = map(int, date_str.split("-"))
+    await callback.message.edit_reply_markup(reply_markup=generate_month_days_keyboard(year, month))
+
+@router.callback_query(F.data.startswith("pick_date"))
+async def pick_date(callback: types.CallbackQuery, state: FSMContext):
+    _, date_str = callback.data.split(":")
+    year, month, day = map(int, date_str.split("-"))
+    selected_date = datetime(year, month, day, tzinfo=TZ)
+    now = datetime.now(TZ)
+
+    if selected_date.date() < now.date():
+        await callback.answer("⚠️ O‘tgan sana tanlanmaydi!", show_alert=True)
+        return
+
+    await state.update_data(deadline=selected_date)
+    await callback.message.edit_text(
+        f"🗓 Sana: {selected_date.strftime('%Y-%m-%d')}\n\n"
+        f"📝 Endi vazifa tavsifini kiriting (yoki 'yo‘q' deb yozing):",
         reply_markup=await get_cancel_keyboard()
     )
     await state.set_state(AddPersonalTask.description)
-
 @router.message(AddPersonalTask.description)
 async def add_task_description(message: types.Message, state: FSMContext):
     text = message.text.strip()

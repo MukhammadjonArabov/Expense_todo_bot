@@ -114,3 +114,4 @@ async def get_task_statistics(telegram_id: int):
             "not_completed": not_completed,
             "upcoming": upcoming
         }
+

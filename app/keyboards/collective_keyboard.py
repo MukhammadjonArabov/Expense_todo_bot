@@ -40,3 +40,9 @@ async def get_joined_projects_menu():
         ],
         resize_keyboard=True,
     )
+
+async def cancel_button():
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="❌ Bekor qilish")]],
+        resize_keyboard=True
+    )

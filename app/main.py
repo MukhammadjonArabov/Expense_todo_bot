@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from aiogram import Bot, Dispatcher
 from app.database import init_db
 from app.handlers import (
@@ -9,27 +10,47 @@ from app.addition.commands import set_bot_commands
 from app.services.scheduler import setup_scheduler
 
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    handlers=[
+        logging.FileHandler("bot.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+
 async def main():
-    await init_db()
+    try:
+        await init_db()
+        logger.info("📦 Ma'lumotlar bazasi muvaffaqiyatli yaratildi yoki allaqachon mavjud.")
 
-    bot = Bot(token=BOT_TOKEN)
-    dp = Dispatcher()
+        bot = Bot(token=BOT_TOKEN)
+        dp = Dispatcher()
 
+        dp.include_router(start.router)
+        dp.include_router(expense.router)
+        dp.include_router(statistics.router)
+        dp.include_router(tasks_add.router)
+        dp.include_router(tasks_list.router)
+        dp.include_router(tasks_assignment.router)
+        dp.include_router(tasks_see.router)
+        dp.include_router(create_project.router)
 
-    dp.include_router(start.router)
-    dp.include_router(expense.router)
-    dp.include_router(statistics.router)
-    dp.include_router(tasks_add.router)
-    dp.include_router(tasks_list.router)
-    dp.include_router(tasks_assignment.router)
-    dp.include_router(tasks_see.router)
-    dp.include_router(create_project.router)
+        await setup_scheduler(bot)
+        await set_bot_commands(bot)
 
-    await setup_scheduler(bot)
-    await set_bot_commands(bot)
+        logger.info("🤖 Bot ishga tushdi va polling boshlandi.")
+        await dp.start_polling(bot)
 
-    print("🤖 Bot ishga tushdi...")
-    await dp.start_polling(bot)
+    except Exception as e:
+        logger.exception(f"❌ Bot ishga tushirishda xatolik: {e}")
+
+    finally:
+        logger.info("🛑 Bot to‘xtatildi.")
 
 
 if __name__ == "__main__":

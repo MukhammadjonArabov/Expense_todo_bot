@@ -1,29 +1,34 @@
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
 from datetime import datetime
 
-from app.addition.calendar import generate_month_days_keyboard
 from app.addition.functions import TZ, get_user
 from app.addition.state import AddPersonalTask
-from app.database import async_session, Task, PersonalTask
+from app.database import async_session, PersonalTask
 from app.keyboards.expanse_main import show_main_menu
 from app.keyboards.tasks_keyboard import (
-   get_tasks_action_keyboard,
-   get_personal_tasks_keyboard,
-   get_cancel_keyboard
+    get_tasks_action_keyboard,
+    get_personal_tasks_keyboard,
+    get_cancel_keyboard
 )
 
 router = Router()
 
 @router.message(F.text == "📝 Vazifalar")
 async def show_task_menu(message: types.Message):
-    await message.answer("📝 Vazifalar bo‘limi:", reply_markup= await get_tasks_action_keyboard())
+    await message.answer(
+        "📝 Vazifalar bo‘limi:",
+        reply_markup=await get_tasks_action_keyboard()
+    )
 
 
 @router.message(F.text == "👤 Shaxsiy")
 async def show_personal_tasks_menu(message: types.Message):
-    await message.answer("👤 Shaxsiy vazifalar bo‘limi:", reply_markup= await get_personal_tasks_keyboard())
+    await message.answer(
+        "👤 Shaxsiy vazifalar bo‘limi:",
+        reply_markup=await get_personal_tasks_keyboard()
+    )
+
 
 @router.message(F.text == "➕ Vazifa qo‘shish")
 async def add_task_start(message: types.Message, state: FSMContext):
@@ -33,18 +38,24 @@ async def add_task_start(message: types.Message, state: FSMContext):
     )
     await state.set_state(AddPersonalTask.title)
 
+
 @router.message(F.text == "⬅️ Qaytish")
 async def cancel_task_addition(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
-        "👇 Quydagilardan birini tanlang",
-        reply_markup= await get_personal_tasks_keyboard()
+        "👇 Quyidagilardan birini tanlang:",
+        reply_markup=await get_personal_tasks_keyboard()
     )
+
 
 @router.message(F.text == "⬅️ Ortga qaytish")
 async def come_back_task_manu(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("📝 Vazifalar menyusiga qaytdingiz!", reply_markup=await get_tasks_action_keyboard())
+    await message.answer(
+        "📝 Vazifalar menyusiga qaytdingiz!",
+        reply_markup=await get_tasks_action_keyboard()
+    )
+
 
 @router.message(AddPersonalTask.title)
 async def add_task_title(message: types.Message, state: FSMContext):
@@ -55,38 +66,32 @@ async def add_task_title(message: types.Message, state: FSMContext):
     )
     await state.set_state(AddPersonalTask.month_day)
 
+
 @router.message(AddPersonalTask.month_day)
-async def choose_date(message: types.Message, state: FSMContext):
+async def add_task_month_day(message: types.Message, state: FSMContext):
+    text = message.text.strip()
     now = datetime.now(TZ)
-    await message.answer(
-        "📅 Oy va kunni tanlang:",
-        reply_markup=generate_month_days_keyboard(now.year, now.month)
-    )
+    year = now.year
 
-@router.callback_query(F.data.startswith("change_month"))
-async def change_month(callback: types.CallbackQuery):
-    _, date_str = callback.data.split(":")
-    year, month = map(int, date_str.split("-"))
-    await callback.message.edit_reply_markup(reply_markup=generate_month_days_keyboard(year, month))
+    try:
+        month, day = map(int, text.split("-"))
+        selected_date = datetime(year, month, day, tzinfo=TZ)
 
-@router.callback_query(F.data.startswith("pick_date"))
-async def pick_date(callback: types.CallbackQuery, state: FSMContext):
-    _, date_str = callback.data.split(":")
-    year, month, day = map(int, date_str.split("-"))
-    selected_date = datetime(year, month, day, tzinfo=TZ)
-    now = datetime.now(TZ)
+        if selected_date.date() < now.date():
+            await message.answer("⚠️ O‘tgan sana tanlanmaydi! Boshqatdan kiriting:")
+            return
 
-    if selected_date.date() < now.date():
-        await callback.answer("⚠️ O‘tgan sana tanlanmaydi!", show_alert=True)
-        return
+        await state.update_data(deadline=selected_date)
+        await message.answer(
+            "📄 Vazifa tavsifini kiriting (yoki 'yo‘q' deb yozing):",
+            reply_markup=await get_cancel_keyboard()
+        )
+        await state.set_state(AddPersonalTask.description)
 
-    await state.update_data(deadline=selected_date)
-    await callback.message.edit_text(
-        f"🗓 Sana: {selected_date.strftime('%Y-%m-%d')}\n\n"
-        f"📝 Endi vazifa tavsifini kiriting (yoki 'yo‘q' deb yozing):",
-        reply_markup=await get_cancel_keyboard()
-    )
-    await state.set_state(AddPersonalTask.description)
+    except Exception:
+        await message.answer("❌ Sana noto‘g‘ri formatda. Masalan: `12-31`")
+
+
 @router.message(AddPersonalTask.description)
 async def add_task_description(message: types.Message, state: FSMContext):
     text = message.text.strip()
@@ -110,10 +115,17 @@ async def add_task_description(message: types.Message, state: FSMContext):
         session.add(new_task)
         await session.commit()
 
-    await message.answer("✅ Vazifa muvaffaqiyatli qo‘shildi!", reply_markup= await get_personal_tasks_keyboard())
+    await message.answer(
+        "✅ Vazifa muvaffaqiyatli qo‘shildi!",
+        reply_markup=await get_personal_tasks_keyboard()
+    )
     await state.clear()
+
 
 @router.message(F.text == "🔙 Orqaga")
 async def add_task_back(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("🏠 Asosoiy menyuga qaytdingiz", reply_markup=await show_main_menu())
+    await message.answer(
+        "🏠 Asosiy menyuga qaytdingiz",
+        reply_markup=await show_main_menu()
+    )

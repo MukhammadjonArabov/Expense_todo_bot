@@ -39,7 +39,7 @@ async def main():
         dp.include_router(tasks_see.router)
         dp.include_router(create_project.router)
 
-        await setup_scheduler(bot)
+        setup_scheduler(bot)
         await set_bot_commands(bot)
 
         logger.info("Bot ishga tushdi va polling boshlandi.")

@@ -19,7 +19,7 @@ async def send_morning_notifications(bot: Bot):
             tasks = (
                 await session.execute(
                     select(PersonalTask).where(
-                        and_(PersonalTask.user_id == user.id, PersonalTask.date == today)
+                        and_(PersonalTask.user_id == user.id, PersonalTask.deadline == today)
                     )
                 )
             ).scalars().all()
@@ -36,8 +36,7 @@ async def send_morning_notifications(bot: Bot):
                 text = (
                     f"🌞 *Xayrli tong, {user.username or 'do‘stim'}!* ☕\n\n"
                     f"Bugun uchun hali maqsad qo‘ymadingiz 😴\n"
-                    f"Yangi kun — yangi imkoniyatlar 💪\n"
-                    f"Shu zahoti rejangizni qo‘ying!"
+                    f"Yangi kun — yangi imkoniyatlar 💪"
                 )
 
             try:
@@ -58,7 +57,7 @@ async def send_evening_notifications(bot: Bot):
             tasks = (
                 await session.execute(
                     select(PersonalTask).where(
-                        and_(PersonalTask.user_id == user.id, PersonalTask.date == today)
+                        and_(PersonalTask.user_id == user.id, PersonalTask.deadline == today)
                     )
                 )
             ).scalars().all()
@@ -70,8 +69,8 @@ async def send_evening_notifications(bot: Bot):
                     f"Ertangi kunni kuchli boshlash uchun hoziroq rejalashtiring! 💡"
                 )
             else:
-                done = [t for t in tasks if t.is_done]
-                undone = [t for t in tasks if not t.is_done]
+                done = [t for t in tasks if t.is_completed]
+                undone = [t for t in tasks if not t.is_completed]
 
                 text = f"🌙 *Kun yakuni* 📅\n\n"
                 if done:

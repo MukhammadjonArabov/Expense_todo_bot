@@ -13,10 +13,9 @@ from app.addition.state import CreateProject
 router = Router()
 
 
-router.message(F.text == "👥 Jamoviy")
+@router.message(lambda m: "jamoviy" in m.text.lower().replace("\u00A0", " "))
 async def show_collective_menu(message: types.Message):
     await message.answer("Jamoviy bo‘limni tanlang 👇", reply_markup=await get_team_menu())
-
 
 @router.message(F.text == "📂 Mening loyhalarim")
 async def show_my_projects_menu(message: types.Message):

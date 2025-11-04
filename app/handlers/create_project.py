@@ -112,3 +112,11 @@ async def get_project_description(message: types.Message, state: FSMContext):
         )
 
     await state.clear()
+
+@router.message(F.text == "🔙 Ortga")
+async def back_team_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        "🏠 Loyhalar menyuga qaytdingiz",
+        reply_markup=await get_team_menu()
+    )

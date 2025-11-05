@@ -9,6 +9,7 @@ from app.addition.functions import get_user
 from app.addition.generate_invite import generate_invite_link
 from app.keyboards.collective_keyboard import get_my_projects_menu, get_team_menu, cancel_button
 from app.addition.state import CreateProject
+from app.keyboards.tasks_keyboard import get_tasks_action_keyboard
 
 router = Router()
 
@@ -118,5 +119,5 @@ async def back_team_menu(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(
         "🏠 Loyhalar menyuga qaytdingiz",
-        reply_markup=await get_team_menu()
+        reply_markup=await get_tasks_action_keyboard()
     )

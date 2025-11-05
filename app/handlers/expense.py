@@ -9,6 +9,11 @@ from datetime import datetime
 from app.handlers.statistics import show_statistics_menu
 from app.keyboards.expanse_main import get_expense_keyboard, show_main_menu, get_back_keyboard, \
     get_expenses_action_keyboard, get_months_keyboard, get_years_keyboard
+from app.addition.calendar_fun import (
+    generate_years_keyboard,
+    generate_months_keyboard,
+    generate_days_keyboard
+)
 
 router = Router()
 
@@ -48,6 +53,14 @@ async def back_to_home_menu(message: types.Message, state: FSMContext):
     await message.answer("🏠 Asosiy menyuga qaytdingiz!", reply_markup= await show_main_menu())
 
 
+async def cancel_adding_expense(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        "🔙 Harajat qo‘shish bekor qilindi.",
+        reply_markup=get_expense_keyboard()
+    )
+
+
 @router.message(F.text == "➕ Harajat qo'shish")
 async def add_expense_start(message: types.Message, state: FSMContext):
     await message.answer(
@@ -56,9 +69,10 @@ async def add_expense_start(message: types.Message, state: FSMContext):
     )
     await state.set_state(AddExpense.amount)
 
+
 @router.message(AddExpense.amount)
 async def add_expense_amount(message: types.Message, state: FSMContext):
-    if message.text == "🔙 Menyuga qaytish":
+    if message.text.strip() == "🔙 Menyuga qaytish":
         await cancel_adding_expense(message, state)
         return
 
@@ -66,87 +80,133 @@ async def add_expense_amount(message: types.Message, state: FSMContext):
         amount = int(message.text.strip())
         if amount <= 0:
             raise ValueError
-        await state.update_data(amount=amount)
-        await message.answer(
-            "📝 Harajat sababini kiriting.\n"
-            "Agar sabab bo‘lmasa, '-' belgini kiriting!",
-            reply_markup=await get_back_keyboard()
-        )
-        await state.set_state(AddExpense.reason)
     except ValueError:
-        await message.answer("🚫 Iltimos, to‘g‘ri musbat butun son kiriting!")
+        await message.answer("🚫 Iltimos, musbat butun son kiriting!")
+        return
+
+    await state.update_data(amount=amount)
+    await message.answer(
+        "📝 Harajat sababini kiriting (yoki '-' kiriting):",
+        reply_markup=await get_back_keyboard()
+    )
+    await state.set_state(AddExpense.reason)
 
 
 @router.message(AddExpense.reason)
 async def add_expense_reason(message: types.Message, state: FSMContext):
-    if message.text == "🔙 Menyuga qaytish":
+    if message.text.strip() == "🔙 Menyuga qaytish":
         await cancel_adding_expense(message, state)
         return
 
     reason = message.text.strip()
     reason = None if reason == "-" else reason
-
     await state.update_data(reason=reason)
+
     await message.answer(
-        "📅 Sana va vaqtni kiriting (masalan: 2025-10-14 14:30)\n"
-        "Hozirgi vaqtni kiritish uchun '-' belgini kiriting!",
-        reply_markup=await get_back_keyboard()
+        "📅 Harajat sanasini tanlang: \nAvvalo yilni tanlang",
+        reply_markup=generate_years_keyboard()
     )
     await state.set_state(AddExpense.date)
 
 
-@router.message(AddExpense.date)
-async def add_expense_date(message: types.Message, state: FSMContext):
-    if message.text == "🔙 Menyuga qaytish":
-        await cancel_adding_expense(message, state)
+# --- Inline keyboard bilan yil/oy/kun tanlash
+
+# 4.1 Yilni tanlash
+@router.callback_query(F.data.startswith("year:"))
+async def process_year(callback: types.CallbackQuery, state: FSMContext):
+    _, year = callback.data.split(":")
+    year = int(year)
+    await state.update_data(selected_year=year)
+    await callback.message.edit_text(
+        f"📅 {year}-yil tanlandi. Endi oyni tanlang:",
+        reply_markup=generate_months_keyboard(year)
+    )
+
+
+# 4.2 Oyni tanlash
+@router.callback_query(F.data.startswith("month:"))
+async def process_month(callback: types.CallbackQuery, state: FSMContext):
+    _, year, month = callback.data.split(":")
+    year, month = int(year), int(month)
+    await state.update_data(selected_month=month)
+    await callback.message.edit_text(
+        f"📅 {year}-yil, {month}-oy tanlandi. Endi kunni tanlang:",
+        reply_markup=generate_days_keyboard(year, month)
+    )
+
+
+# 4.3 Kunni tanlash
+@router.callback_query(F.data.startswith("day:"))
+async def process_day(callback: types.CallbackQuery, state: FSMContext):
+    _, year, month, day = callback.data.split(":")
+    selected_date = datetime(int(year), int(month), int(day), tzinfo=TZ)
+
+    # O‘tgan sanani tekshirish
+    now = datetime.now(TZ)
+    if selected_date.date() < now.date():
+        await callback.answer("⚠️ O‘tgan sana tanlanmaydi!", show_alert=True)
         return
+
+    await state.update_data(selected_date=selected_date)
 
     data = await state.get_data()
-    telegram_id = message.from_user.id
+    amount = data.get("amount")
+    reason = data.get("reason")
 
-    # Sana va vaqtni aniqlash
-    if message.text.strip() == "-":
-        created_at = datetime.now(TZ)
-    else:
-        try:
-            created_at = TZ.localize(datetime.strptime(message.text.strip(), "%Y-%m-%d %H:%M"))
-        except ValueError:
-            await message.answer("🚫 Noto‘g‘ri format! Masalan: 2025-10-14 14:30 yoki '-' belgini kiriting.")
-            return
-
-    # Kelajak sanani tekshirish
-    if created_at > datetime.now(TZ):
-        await message.answer("🚫 Kelajakdagi vaqtni kiritib bo‘lmaydi.")
+    if amount is None:
+        await callback.message.answer("⚠️ Miqdor topilmadi. Iltimos, boshqatdan boshlang!")
+        await state.clear()
         return
 
-    # Foydalanuvchini olish
     async with async_session() as session:
-        user = await get_user(session, telegram_id)
+        user = await get_user(session, callback.from_user.id)
         if not user:
-            await message.answer("❗ Avval ro‘yxatdan o‘ting! /start")
+            await callback.message.answer("❗ Avval ro‘yxatdan o‘ting! /start")
             await state.clear()
             return
 
-        # Harajatni saqlash
         expense = Expense(
             user_id=user.id,
-            amount=data["amount"],
-            reason=data["reason"],
-            created_at=created_at
+            amount=amount,
+            reason=reason,
+            created_at=selected_date
         )
         session.add(expense)
         await session.commit()
         await session.refresh(expense)
 
-    await message.answer(
+    await callback.message.answer(
         f"✅ Harajat muvaffaqiyatli saqlandi!\n\n"
         f"🆔 ID: {expense.id}\n"
         f"💰 Miqdor: {expense.amount}\n"
         f"📝 Sabab: {expense.reason or 'Noma’lum'}\n"
-        f"📅 Sana: {expense.created_at.strftime('%Y-%m-%d %H:%M')}",
+        f"📅 Sana: {expense.created_at.astimezone(TZ).strftime('%Y-%m-%d')}",
         reply_markup=get_expense_keyboard()
     )
     await state.clear()
+
+
+@router.callback_query(F.data == "back_to_years")
+async def back_to_years(callback: types.CallbackQuery):
+    await callback.message.edit_text(
+        "📅 Yilni tanlang:",
+        reply_markup=generate_years_keyboard()
+    )
+
+
+@router.callback_query(F.data.startswith("back_to_months:"))
+async def back_to_months(callback: types.CallbackQuery):
+    year = int(callback.data.split(":")[1])
+    await callback.message.edit_text(
+        f"📅 {year}-yil uchun oyni tanlang:",
+        reply_markup=generate_months_keyboard(year)
+    )
+async def cancel_adding_expense(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        "🔙 Harajat qo‘shish bekor qilindi.",
+        reply_markup=get_expense_keyboard()
+    )
 
 @router.callback_query(F.data.startswith("expenses_page:"))
 async def change_expense_page(callback: types.CallbackQuery):

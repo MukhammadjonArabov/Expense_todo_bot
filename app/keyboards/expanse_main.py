@@ -46,8 +46,7 @@ def get_expense_keyboard():
             [KeyboardButton(text="📊 Harajatlar statistika")],
             [KeyboardButton(text="⬅️ Orqaga")]
         ],
-        resize_keyboard=True,
-        one_time_keyboard=False
+        resize_keyboard=True
     )
 
 def get_years_keyboard(years: list[int], user_id: int):

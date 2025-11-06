@@ -1,6 +1,7 @@
 import uuid
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -9,7 +10,6 @@ from app.addition.functions import get_user
 from app.addition.generate_invite import generate_invite_link
 from app.keyboards.collective_keyboard import get_my_projects_menu
 from app.addition.state import UpdateProject
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 router = Router()
 
@@ -22,8 +22,8 @@ async def cancel_update_button():
     )
 
 
-# 🔘 Foydalanuvchining loyihalari ro‘yxatini chiqaruvchi funksiya
-async def get_user_projects_keyboard(user_id: int):
+# 🔘 Inline tugmalar orqali loyihalar ro‘yxatini chiqarish
+async def get_user_projects_inline_keyboard(user_id: int):
     async with async_session() as session:
         projects = (
             await session.execute(
@@ -34,11 +34,13 @@ async def get_user_projects_keyboard(user_id: int):
     if not projects:
         return None
 
-    keyboard = [
-        [KeyboardButton(text=p.name)] for p in projects
-    ]
-    keyboard.append([KeyboardButton(text="❌ O‘zgartirishni to‘xtatish")])
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=p.name, callback_data=f"update_proj:{p.id}")]
+            for p in projects
+        ]
+    )
+    return keyboard
 
 
 # 🛠 Loyihani o‘zgartirish menyusi
@@ -51,7 +53,7 @@ async def choose_project_to_update(message: types.Message, state: FSMContext):
             await message.answer("Siz tizimda ro‘yxatdan o‘tmagansiz.")
             return
 
-        projects_keyboard = await get_user_projects_keyboard(user.id)
+        projects_keyboard = await get_user_projects_inline_keyboard(user.id)
         if not projects_keyboard:
             await message.answer(
                 "❗ Siz hali birorta loyiha yaratmagansiz.",
@@ -66,34 +68,27 @@ async def choose_project_to_update(message: types.Message, state: FSMContext):
         await state.set_state(UpdateProject.select_project)
 
 
-# 📂 Loyihani tanlagandan keyin
-@router.message(UpdateProject.select_project)
-async def start_project_update(message: types.Message, state: FSMContext):
-    project_name = message.text.strip()
+# 📂 Inline tugma orqali loyiha tanlanganda
+@router.callback_query(F.data.startswith("update_proj:"))
+async def start_project_update_callback(callback: types.CallbackQuery, state: FSMContext):
+    project_id = int(callback.data.split(":")[1])
 
     async with async_session() as session:
-        user = await get_user(session, message.from_user.id)
-        project = (
-            await session.execute(
-                select(Project).where(
-                    Project.name == project_name,
-                    Project.create_by == user.id
-                )
-            )
-        ).scalars().first()
+        project = await session.get(Project, project_id)
 
-        if not project:
-            await message.answer("❌ Bunday loyiha topilmadi, qayta tanlang.")
-            return
+    if not project:
+        await callback.message.answer("❌ Loyiha topilmadi.")
+        return
 
-        await state.update_data(project_id=project.id)
-        await message.answer(
-            f"✏️ Loyiha nomini yangilang yoki eski nomni qoldiring:\n\n"
-            f"Joriy nom: <b>{project.name}</b>",
-            parse_mode="HTML",
-            reply_markup=await cancel_update_button()
-        )
-        await state.set_state(UpdateProject.new_name)
+    await state.update_data(project_id=project.id)
+    await callback.message.answer(
+        f"✏️ Loyiha nomini yangilang yoki eski nomni qoldiring:\n\n"
+        f"Joriy nom: <b>{project.name}</b>",
+        parse_mode="HTML",
+        reply_markup=await cancel_update_button()
+    )
+    await state.set_state(UpdateProject.new_name)
+    await callback.answer()  # Inline yuklash animatsiyasini to‘xtatish
 
 
 # ✏️ Yangi nomni olish

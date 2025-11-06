@@ -1,7 +1,7 @@
 from datetime import datetime
 from aiogram import Bot
-from sqlalchemy import select, and_
-from app.database import async_session, User, PersonalTask
+from sqlalchemy import select, and_, extract, func
+from app.database import async_session, User, PersonalTask, Expense
 import pytz
 
 TZ = pytz.timezone("Asia/Tashkent")
@@ -139,3 +139,61 @@ async def send_midday_notifications(bot: Bot):
                 await bot.send_message(user.telegram_id, text, parse_mode="Markdown")
             except Exception as e:
                 print(f"❌ Tushlikdagi eslatma yuborilmadi ({user.telegram_id}): {e}")
+
+async def send_expense_summary(bot: Bot):
+    now = datetime.now(TZ)
+    today = now.date()
+    current_month = now.month
+    current_year = now.year
+
+    async with async_session() as session:
+        users = (await session.execute(select(User))).scalars().all()
+
+        for user in users:
+            # 🔹 Bugungi xarajatlar
+            today_expenses = (
+                await session.execute(
+                    select(func.sum(Expense.amount))
+                    .where(
+                        and_(
+                            Expense.user_id == user.id,
+                            func.date(Expense.created_at) == today,
+                        )
+                    )
+                )
+            ).scalar() or 0
+
+            # 🔹 Shu oydagi jami xarajatlar
+            month_expenses = (
+                await session.execute(
+                    select(func.sum(Expense.amount))
+                    .where(
+                        and_(
+                            Expense.user_id == user.id,
+                            extract("month", Expense.created_at) == current_month,
+                            extract("year", Expense.created_at) == current_year,
+                        )
+                    )
+                )
+            ).scalar() or 0
+
+            # 🔹 Xabar matni
+            if today_expenses == 0:
+                text = (
+                    f"💰 *Salom, {user.username or 'do‘stim'}!* 📊\n\n"
+                    f"Bugun hali xarajat qo‘shmagansiz 😴\n"
+                    f"Har bir so‘mni nazorat qilish — muvaffaqiyat kaliti 💡\n\n"
+                    f"📆 Joriy oydagi umumiy xarajatlaringiz: *{month_expenses:,} so‘m*"
+                )
+            else:
+                text = (
+                    f"💸 *Kun yakuni: Harajatlar hisobi* 🕢\n\n"
+                    f"📅 Bugungi xarajatlaringiz: *{today_expenses:,} so‘m*\n"
+                    f"📆 Joriy oydagi jami xarajatlar: *{month_expenses:,} so‘m*\n\n"
+                    f"💭 Moliyani nazorat qilish — barqarorlik garovi 💪"
+                )
+
+            try:
+                await bot.send_message(user.telegram_id, text, parse_mode="Markdown")
+            except Exception as e:
+                print(f"❌ Harajat xabari yuborilmadi ({user.telegram_id}): {e}")

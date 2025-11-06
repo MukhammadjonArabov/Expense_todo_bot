@@ -3,7 +3,7 @@ from apscheduler.triggers.cron import CronTrigger
 from app.addition.functions import TZ
 from app.services.notifications import (
     send_morning_notifications,
-    send_evening_notifications, send_midday_notifications,
+    send_evening_notifications, send_midday_notifications, send_expense_summary,
 )
 
 def setup_scheduler(bot):
@@ -31,6 +31,14 @@ def setup_scheduler(bot):
         trigger=CronTrigger(hour=12, minute=0, timezone=TZ),
         args=[bot],
         id="midday_job",
+        replace_existing=True,
+    )
+
+    scheduler.add_job(
+        send_expense_summary,
+        trigger=CronTrigger(hour=20, minute=30, timezone=TZ),
+        args=[bot],
+        id="expense_summary_job",
         replace_existing=True,
     )
 

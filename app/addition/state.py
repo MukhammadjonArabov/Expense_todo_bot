@@ -16,3 +16,8 @@ class AddPersonalTask(StatesGroup):
 class CreateProject(StatesGroup):
     name = State()
     description = State()
+
+class UpdateProject(StatesGroup):
+    select_project = State()
+    new_name = State()
+    new_description = State()

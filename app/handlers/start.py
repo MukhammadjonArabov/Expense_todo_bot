@@ -24,7 +24,6 @@ async def start_handler(message: types.Message, command: CommandObject, state: F
         result = await session.execute(select(User).where(User.telegram_id == tg_id))
         user = result.scalars().first()
 
-        # 1️⃣ Oddiy start
         if not args:
             if user:
                 await message.answer("🏠 Asosiy menyu:", reply_markup=await show_main_menu())
@@ -32,24 +31,20 @@ async def start_handler(message: types.Message, command: CommandObject, state: F
                 await phone_menu(message)
             return
 
-        # 2️⃣ Taklif havolasi orqali kirish (/start join_<token>)
         if args.startswith("join_"):
             token = args.replace("join_", "")
 
-            # Agar foydalanuvchi ro‘yxatdan o‘tmagan bo‘lsa — tokenni saqlab, phone so‘raymiz
             if not user:
                 await state.update_data(pending_project_token=token)
                 await phone_menu(message)
                 return
 
-            # Agar user mavjud bo‘lsa — loyihani topamiz
             project_res = await session.execute(select(Project).where(Project.invite_token == token))
             project = project_res.scalars().first()
             if not project:
                 await message.answer("❌ Taklif havolasi yaroqsiz yoki loyiha topilmadi.")
                 return
 
-            # Egasi bo‘lsa — ogohlantiramiz
             if user.id == project.create_by:
                 await message.answer(
                     f"ℹ️ Siz <b>{project.name}</b> loyihasining egasisiz.",
@@ -57,7 +52,6 @@ async def start_handler(message: types.Message, command: CommandObject, state: F
                 )
                 return
 
-            # Allaqachon a’zo bo‘lganini tekshiramiz
             member_check = await session.execute(
                 select(ProjectMember).where(
                     ProjectMember.project_id == project.id,
@@ -69,7 +63,6 @@ async def start_handler(message: types.Message, command: CommandObject, state: F
                 await message.answer(f"✅ Siz allaqachon <b>{project.name}</b> loyihasidasiz!", parse_mode="HTML")
                 return
 
-            # Yangi a’zo sifatida qo‘shamiz
             new_member = ProjectMember(
                 project_id=project.id,
                 user_id=user.id,

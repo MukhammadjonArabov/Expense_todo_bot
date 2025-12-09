@@ -115,7 +115,6 @@ async def show_default_expenses(message: types.Message):
         now = datetime.now(TZ)
         current_year, current_month = now.year, now.month
 
-        # Hozirgi oy harajatlarini ko‘rsatish
         await show_expenses_page(
             target=message,
             session=session,
@@ -124,8 +123,6 @@ async def show_default_expenses(message: types.Message):
             year=current_year,
             month=current_month,
         )
-
-        # ⚠️ E’tibor: Bu joyda keyboard chiqishi uchun reply_markup shunday chaqiriladi
         await message.answer(
             "👇 Quyidagi harakatlardan birini tanlang:",
             reply_markup=get_expenses_action_keyboard()

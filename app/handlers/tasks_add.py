@@ -19,14 +19,14 @@ from app.addition.calendar_fun import (
 
 router = Router()
 
+# @router.message(F.text == "📝 Vazifalar")
+# async def show_task_menu(message: types.Message):
+#     await message.answer(
+#         "📝 Vazifalar bo‘limi:", reply_markup=await get_tasks_action_keyboard()
+#     )
+
+
 @router.message(F.text == "📝 Vazifalar")
-async def show_task_menu(message: types.Message):
-    await message.answer(
-        "📝 Vazifalar bo‘limi:", reply_markup=await get_tasks_action_keyboard()
-    )
-
-
-@router.message(F.text == "👤 Shaxsiy")
 async def show_personal_tasks_menu(message: types.Message):
     await message.answer(
         "👤 Shaxsiy vazifalar bo‘limi:", reply_markup=await get_personal_tasks_keyboard()

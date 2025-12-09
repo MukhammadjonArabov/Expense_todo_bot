@@ -5,7 +5,6 @@ from app.database import init_db
 from app.handlers import (
     expense, start, statistics, tasks_add, tasks_list,
     tasks_assignment, tasks_see, expense_add,
-    update_project,
 )
 from app.config import BOT_TOKEN
 from app.addition.commands import set_bot_commands
@@ -40,7 +39,6 @@ async def main():
         dp.include_router(tasks_assignment.router)
         dp.include_router(tasks_see.router)
         dp.include_router(expense_add.router)
-        dp.include_router(update_project.router)
 
         setup_scheduler(bot)
         await set_bot_commands(bot)
